@@ -2,9 +2,23 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: catalina-arches
+  description: Catalina Arches web application. Placeholder - contents are being migrated by pull request.
   annotations:
     github.com/project-slug: tepapaatawhai/catalina-arches
+    aws.amazon.com/account-id: "545788340931"
+    aws.amazon.com/account-name: Arches-test-8C2E
+    aws.amazon.com/region: ap-southeast-6
+  labels:
+    doc.govt.nz/control-profile: standard
+    doc.govt.nz/information-classification: unclassified
+  tags:
+    - catalina
+    - arches
 spec:
-  type: other
-  lifecycle: unknown
+  type: service
+  lifecycle: active
   owner: catalina-approvers
+  system: catalina
+  dependsOn:
+    - resource:default/aws-account-arches-test-8c2e
+    - component:default/catalina-graphs
