@@ -213,7 +213,7 @@ jobs:
         run: |
           python manage.py setup_db --force --settings=tests.test_settings --skip-checks
           python manage.py migrate --settings=tests.test_settings --skip-checks
-          python manage.py createcachetable --settings=tests.test_settings --skip-checks
+          python manage.py createcachetable --settings=tests.test_settings
 
       - name: Start Django dev server
         run: |
