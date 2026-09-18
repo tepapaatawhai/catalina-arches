@@ -20,3 +20,7 @@ frontend_configuration
 # Packaging
 build/
 dist/
+
+# Cypress local run artifacts
+cypress/videos/
+cypress/screenshots/

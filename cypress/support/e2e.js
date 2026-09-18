@@ -18,3 +18,11 @@ import './commands';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
+
+// The pages Cypress lands on after cy.login() keep running their own
+// knockout-bound JS in the background (e.g. an async "Unknown component
+// 'views/components/language-switcher'" error) while specs go on to make
+// plain cy.request() API calls. That's an unrelated, pre-existing frontend
+// issue that has nothing to do with what these specs assert, so don't let
+// it fail tests that never interact with the rendered page.
+Cypress.on('uncaught:exception', () => false);

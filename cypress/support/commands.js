@@ -20,7 +20,12 @@
 Cypress.Commands.add("login", () => {
     cy.visit('/auth/?next=/index.htm');
 
-    cy.get('.input-group > input[name="username"].form-control').type(`admin{enter}`);
+    // Both fields are on the same page (catalina/templates/login.htm
+    // overrides Arches' default two-step username-then-password form), so
+    // fill both before submitting. Pressing enter after just the username
+    // submits the form early with an empty password, and a second attempt
+    // after that fails again with the username field back to blank.
+    cy.get('.input-group > input[name="username"].form-control').type(`admin`);
     cy.get('.input-group > input[name="password"].form-control').type(`admin{enter}`);
 
     // Wait for the post-login redirect so the session cookie is actually
