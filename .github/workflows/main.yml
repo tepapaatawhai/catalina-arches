@@ -9,14 +9,23 @@ name: CI
 # what actually ships to the cluster via Flux image automation. This
 # workflow only gives fast feedback on lint + unit tests via GitHub-hosted
 # runners.
+#
+# Runs on push to main too (not just pull_request), so every commit that
+# lands on main - including one merged before its PR checks finished, or a
+# hotfix pushed with no PR at all - gets its own fresh, directly-queryable
+# check-runs. catalina-build's build-arches.yml gates image builds on that.
 
 on:
-  # push: -- just run on PRs for now
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 jobs:
   build_target_branch:
+    # Only meaningful for a PR's coverage-diff baseline - there's no target
+    # branch to diff against on a plain push to main.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     services:
@@ -214,6 +223,7 @@ jobs:
           if-no-files-found: ignore
 
   check_frontend_coverage:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [build_feature_branch, build_target_branch]
     steps:
@@ -359,6 +369,7 @@ jobs:
           fi
 
   check_python_coverage:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [build_feature_branch, build_target_branch]
     steps:
