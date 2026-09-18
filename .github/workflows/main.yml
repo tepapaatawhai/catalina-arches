@@ -202,16 +202,19 @@ jobs:
 
       # Mirrors docker/entrypoint.sh's setup_arches/run_migrations sequence
       # (setup_db creates the DB and the default admin/admin superuser the
-      # cypress specs log in with).
+      # cypress specs log in with). --settings=tests.test_settings, same as
+      # the unit test job, since the default catalina.settings assumes ES is
+      # behind HTTPS+basic_auth, but the elasticsearch service here (like the
+      # unit test job's) runs plain HTTP with security disabled.
       - name: Set up Arches database
         run: |
-          python manage.py setup_db --force
-          python manage.py migrate
-          python manage.py createcachetable
+          python manage.py setup_db --force --settings=tests.test_settings
+          python manage.py migrate --settings=tests.test_settings
+          python manage.py createcachetable --settings=tests.test_settings
 
       - name: Start Django dev server
         run: |
-          python manage.py runserver 0.0.0.0:8000 &
+          python manage.py runserver 0.0.0.0:8000 --settings=tests.test_settings &
           npx wait-on http://localhost:8000 --timeout 120000
 
       - name: Run Cypress tests
