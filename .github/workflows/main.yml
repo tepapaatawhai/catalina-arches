@@ -205,16 +205,19 @@ jobs:
       # cypress specs log in with). --settings=tests.test_settings, same as
       # the unit test job, since the default catalina.settings assumes ES is
       # behind HTTPS+basic_auth, but the elasticsearch service here (like the
-      # unit test job's) runs plain HTTP with security disabled.
+      # unit test job's) runs plain HTTP with security disabled. --skip-checks
+      # because test_settings' DummyCache (fine for manage.py test, which
+      # tolerates it) fails Django's system check for these commands with a
+      # blocking arches.E001 (cache backend doesn't support rate-limiting).
       - name: Set up Arches database
         run: |
-          python manage.py setup_db --force --settings=tests.test_settings
-          python manage.py migrate --settings=tests.test_settings
-          python manage.py createcachetable --settings=tests.test_settings
+          python manage.py setup_db --force --settings=tests.test_settings --skip-checks
+          python manage.py migrate --settings=tests.test_settings --skip-checks
+          python manage.py createcachetable --settings=tests.test_settings --skip-checks
 
       - name: Start Django dev server
         run: |
-          python manage.py runserver 0.0.0.0:8000 --settings=tests.test_settings &
+          python manage.py runserver 0.0.0.0:8000 --settings=tests.test_settings --skip-checks &
           npx wait-on http://localhost:8000 --timeout 120000
 
       - name: Run Cypress tests
