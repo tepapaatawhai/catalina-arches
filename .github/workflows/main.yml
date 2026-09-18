@@ -216,6 +216,11 @@ jobs:
           python manage.py createcachetable --settings=tests.test_settings
 
       - name: Start Django dev server
+        # DJANGO_DEBUG=True so Django allows the localhost/127.0.0.1 host
+        # runserver is reached on, since ALLOWED_HOSTS is otherwise empty
+        # and DEBUG=False by default (same env var docker-compose.yml uses).
+        env:
+          DJANGO_DEBUG: "True"
         run: |
           python manage.py runserver 0.0.0.0:8000 --settings=tests.test_settings --skip-checks &
           npx wait-on http://localhost:8000 --timeout 120000
