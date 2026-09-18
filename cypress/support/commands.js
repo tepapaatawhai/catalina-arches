@@ -22,5 +22,8 @@ Cypress.Commands.add("login", () => {
 
     cy.get('.input-group > input[name="username"].form-control').type(`admin{enter}`);
     cy.get('.input-group > input[name="password"].form-control').type(`admin{enter}`);
-  
+
+    // Wait for the post-login redirect so the session cookie is actually
+    // set before callers issue any cy.request() calls.
+    cy.url().should("include", "/index.htm");
 });
