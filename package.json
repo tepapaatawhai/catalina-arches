@@ -39,6 +39,7 @@
         "underscore": "^1.13.6",
         "vitest": "^3.2.6",
         "@vitest/coverage-v8": "^3.2.6",
-        "shell-quote": "^1.8.4"
+        "shell-quote": "^1.8.4",
+        "websocket-driver": "^0.7.5"
     }
 }
