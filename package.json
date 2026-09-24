@@ -37,8 +37,8 @@
         "nomnom": "npm:@gerhobbelt/nomnom",
         "rimraf": "^5.0.7",
         "underscore": "^1.13.6",
-        "vitest": "^3.2.6",
-        "@vitest/coverage-v8": "^3.2.6",
+        "vitest": "^4.1.11",
+        "@vitest/coverage-v8": "^4.1.11",
         "shell-quote": "^1.8.4",
         "websocket-driver": "^0.7.5"
     }
