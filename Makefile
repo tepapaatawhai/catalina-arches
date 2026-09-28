@@ -15,7 +15,7 @@ ifneq ($(ARCHES_ROOT),)
 else
   DOCKER_COMPOSE_FILES = -f docker/docker-compose.yml -f docker-compose.redis.yml
 endif
-ARCHES_BASE = ghcr.io/flaxandteal/arches-base:v8.2.0a4-a5
+ARCHES_BASE = ghcr.io/flaxandteal/arches-base:v8.2.0a8-v2
 ARCHES_PROJECT_ROOT = $(shell pwd)/
 DOCKER_COMPOSE_COMMAND = ARCHES_PROJECT_ROOT=$(ARCHES_PROJECT_ROOT) ARCHES_BASE=$(ARCHES_BASE) ARCHES_PROJECT=$(ARCHES_PROJECT) ARCHES_ROOT=$(ARCHES_ROOT) docker compose -p $(ARCHES_PROJECT) $(DOCKER_COMPOSE_FILES)
 CMD ?=
