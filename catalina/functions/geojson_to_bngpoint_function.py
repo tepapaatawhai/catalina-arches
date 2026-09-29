@@ -7,7 +7,6 @@ from django.contrib.gis.geos import GEOSGeometry
 import json
 from datetime import datetime
 
-
 details = {
     "name": "GeoJSON to BNG Point",
     "type": "node",

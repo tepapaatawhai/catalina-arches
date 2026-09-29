@@ -9,7 +9,6 @@ from django.db import connection, transaction
 import json
 from datetime import datetime
 
-
 details = {
     "name": "BNG Point to GeoJSON",
     "type": "node",

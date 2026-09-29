@@ -5,7 +5,6 @@ from arches.app.models import models
 from arches.app.models.tile import Tile
 from arches.app.datatypes.datatypes import DataTypeFactory
 
-
 details = {
     "name": "Consultation Status",
     "type": "node",
