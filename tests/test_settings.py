@@ -31,23 +31,25 @@ BUSINESS_DATA_FILES = (
     # Don't forget to use absolute paths, not relative paths.
 )
 
+# Connection details default to CI's services; the docker compose stack sets
+# these env vars, so tests also run in the containers (`make manage`).
 DATABASES = {
     "default": {
         "ATOMIC_REQUESTS": False,
         "AUTOCOMMIT": True,
         "CONN_MAX_AGE": 0,
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "HOST": "localhost",
+        "HOST": os.environ.get("PGHOST", "localhost"),
         "NAME": "catalina",
         "OPTIONS": {
             "options": "-c cursor_tuple_fraction=1",
         },
-        "PASSWORD": "postgis",
-        "PORT": "5432",
+        "PASSWORD": os.environ.get("PGPASSWORD", "postgis"),
+        "PORT": os.environ.get("PGPORT", "5432"),
         "POSTGIS_TEMPLATE": "template_postgis",
         "TEST": {"CHARSET": None, "COLLATION": None, "MIRROR": None, "NAME": None},
         "TIME_ZONE": None,
-        "USER": "postgres",
+        "USER": os.environ.get("PGUSERNAME", "postgres"),
     }
 }
 
@@ -71,5 +73,9 @@ SILENCED_SYSTEM_CHECKS.append(
 )
 
 ELASTICSEARCH_HOSTS = [
-    {"scheme": "http", "host": "localhost", "port": ELASTICSEARCH_HTTP_PORT}
+    {
+        "scheme": "http",
+        "host": os.environ.get("ESHOST", "localhost"),
+        "port": int(os.environ.get("ESPORT", ELASTICSEARCH_HTTP_PORT)),
+    }
 ]

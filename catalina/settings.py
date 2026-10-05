@@ -199,6 +199,10 @@ INSTALLED_APPS = (
     "arches_controlled_lists",
     "arches_querysets",
     "arches_component_lab",
+    # Registered in etl_modules since 2026-09-16, so the frontend build compiles
+    # its component either way; listed here so webpack also resolves the app's
+    # own `viewmodels/` imports.
+    "arches_json_importer",
     "arches",
     "arches.app.models",
     "arches.management",
@@ -219,7 +223,6 @@ INSTALLED_APPS += (
     "django.contrib.admin",
     "django.contrib.postgres",
     "arches_her",
-    "arches_json_importer",
 )
 
 REFERENCES_INDEX_NAME = "references"
@@ -639,7 +642,11 @@ ARCGIS_PORTAL_TOKEN_GENERATE_URL = os.environ.get(
 # enable dev portals that expose a corresponding service under different names.
 ARCGIS_PORTAL_SERVICES = {
     "nzaa": os.environ.get(
-        "ARCGIS_PORTAL_SERVICE_NZAA",
+        "ARCGIS_PORTAL_SERVICE_NZAA_SITES",
+        "NZAA_ArchSites_HFLr/FeatureServer",
+    ),
+    "nzaa_buff": os.environ.get(
+        "ARCGIS_PORTAL_SERVICE_NZAA_BUFFERED",
         "NZAA_ArchSiteBuffer_HFLr/FeatureServer",
     ),
     "cons_land": os.environ.get(

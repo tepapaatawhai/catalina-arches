@@ -1,3 +1,10 @@
+"""Superseded: overlays are now defined in catalina/overlays/registry.py.
+
+The registry is applied after every migrate and rewrites these rows by the same
+fixed ids, so what this migration writes on a fresh database is short-lived.
+Kept as applied history.
+"""
+
 import logging
 import uuid
 
@@ -36,10 +43,9 @@ OVERLAY_SLUGS = [
 
 
 def _portal_geojson_url(slug, layer_index=0):
-    # ArcGIS FeatureServer "?f=geojson&where=1=1" returns all features.
-    # For the three large layers (cons_land, ops_regions, ops_districts) this
-    # source is a placeholder — a client-side bbox-scoped fetcher will need to
-    # replace source.data via setData() at render time.
+    # ArcGIS FeatureServer "?f=geojson&where=1=1" returns at most the service's
+    # maxRecordCount features. Layers past that (nzaa, cons_land) are fetched
+    # per view in the registry (catalina/media/js/utils/map-configurator.js).
     return f"/overlays/{slug}/{layer_index}/query?where=1%3D1&outFields=*&f=geojson"
 
 
@@ -89,8 +95,8 @@ def load_overlays(apps, schema_editor):
         settings.PORTAL_OVERLAYS_AVAILABLE if portal_configured else set()
     )
 
-    # NZAA archaeological site buffers (2,550 features) — small enough for a
-    # single GeoJSON fetch via the login-gated proxy.
+    # NZAA archaeological sites (~80k features). The slug's service is set in
+    # settings.ARCGIS_PORTAL_SERVICES; the registry fetches it per view.
     if "nzaa" in portal_available:
         upsert(
             slug="nzaa",
@@ -154,8 +160,8 @@ def load_overlays(apps, schema_editor):
             ],
         )
 
-    # Conservation Land (~21k features) — too large for one-shot GeoJSON.
-    # Source URL is provisional; client-side dynamic fetcher TBD.
+    # Conservation Land (~11k features, maxRecordCount 1000); the registry
+    # fetches it per view.
     if "cons_land" in portal_available:
         upsert(
             slug="cons_land",
@@ -219,7 +225,7 @@ def load_overlays(apps, schema_editor):
             ],
         )
 
-    # DOC Operations Regions (~20k features) — same dynamic-fetcher caveat.
+    # DOC Operations Regions (11 features; one request).
     if "ops_regions" in portal_available:
         upsert(
             slug="ops_regions",
@@ -240,11 +246,9 @@ def load_overlays(apps, schema_editor):
                     "id": "ops_regions-fill",
                     "source": "ops_regions",
                     "type": "fill",
-                    # TODO(UAT): "region" is the DEV service field name
-                    # (DOC_WebsiteRegions/FeatureServer). The prod/UAT service
-                    # (DOC_OperationsRegions_HFLr/FeatureServer) uses a different
-                    # attribute name.
-                    # Before deploying to UAT, edit these fields to be: [["Region", "regionname"], ["Code", "regioncode"]].
+                    # "region" is the DOC_WebsiteRegions/FeatureServer field
+                    # name. The registry switches this popup to the regionname /
+                    # regioncode fields of DOC_OperationsRegions_HFLr/FeatureServer.
                     "metadata": {
                         "arches:popup": {
                             "title": "region",
@@ -283,7 +287,7 @@ def load_overlays(apps, schema_editor):
             ],
         )
 
-    # DOC Operations Districts (~19k features) — same dynamic-fetcher caveat.
+    # DOC Operations Districts (46 features; one request).
     if "ops_districts" in portal_available:
         upsert(
             slug="ops_districts",
