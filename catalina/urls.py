@@ -24,7 +24,7 @@ urlpatterns = [
     path("azure_auth/callback", views_azure.azure_auth_callback),
     path("azure_auth/", include("azure_auth.urls")),
     path("", include("arches_controlled_lists.urls")),
-    path("", include("arches_component_lab.urls")),
+    path("", include("arches_vue_components.urls")),
     path("", include("arches_her.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

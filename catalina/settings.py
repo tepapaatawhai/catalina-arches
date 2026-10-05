@@ -198,7 +198,7 @@ INSTALLED_APPS = (
     "django_hosts",
     "arches_controlled_lists",
     "arches_querysets",
-    "arches_component_lab",
+    "arches_vue_components",
     # Registered in etl_modules since 2026-09-16, so the frontend build compiles
     # its component either way; listed here so webpack also resolves the app's
     # own `viewmodels/` imports.
