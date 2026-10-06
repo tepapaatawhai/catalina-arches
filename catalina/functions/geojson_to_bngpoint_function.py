@@ -157,6 +157,15 @@ class GeoJSONToBNGPoint(BaseFunction):
             # Transform to Absolute BNG.
             centroidPoint.transform(srid_BngAbs, False)
 
+            # The BNG grid only covers Great Britain (0-700km E, 0-1300km N). A location
+            # elsewhere (e.g. New Zealand) has no grid reference, so skip it rather than
+            # blocking the save.
+            if not (
+                0 <= centroidPoint.coords[0] < 700000
+                and 0 <= centroidPoint.coords[1] < 1300000
+            ):
+                return
+
             # Get initial Easting and Northing digits. N.B. Left Zero pad integer coords to 6 digits!
             easting = str(int(centroidPoint.coords[0])).zfill(6)
             northing = str(int(centroidPoint.coords[1])).zfill(6)
@@ -166,9 +175,7 @@ class GeoJSONToBNGPoint(BaseFunction):
             try:
                 gridref = os_grid[gridref] + easting[1:6] + northing[1:6]
             except KeyError:
-                raise Exception(
-                    "Conversion Error : Coordinates outside of BNG for England."
-                )
+                return
 
             if self.config["bng_output_nodegroup"] == str(tile.nodegroup_id):
                 tile.data[bngnode] = gridref
