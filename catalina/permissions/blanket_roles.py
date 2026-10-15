@@ -89,6 +89,21 @@ class BlanketRoleDenyFramework(ArchesDefaultDenyPermissionFramework):
             user, search_engine, allresources, resources
         )
 
+
+    def get_search_ui_permissions(self, user, search_result, groups):
+        """Upgrade-only: surface blanket access in the search result UI flags.
+
+        The base implementation reads per-instance permissions indexed in
+        Elasticsearch, which blanket-role members do not have, so without this
+        the Related Resources button (gated on ``can_read``) stays hidden.
+        """
+        result = super().get_search_ui_permissions(user, search_result, groups)
+        if self._blanket_grants(user, VIEW_PERM):
+            result["can_read"] = True
+        if self._blanket_grants(user, "change_resourceinstance"):
+            result["can_edit"] = True
+        return result
+
     def get_permission_search_filter(self, user):
         if self._blanket_grants(user, VIEW_PERM):
             return Bool()
