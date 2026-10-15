@@ -89,7 +89,6 @@ class BlanketRoleDenyFramework(ArchesDefaultDenyPermissionFramework):
             user, search_engine, allresources, resources
         )
 
-
     def get_search_ui_permissions(self, user, search_result, groups):
         """Upgrade-only: surface blanket access in the search result UI flags.
 
