@@ -6,7 +6,7 @@ from unittest import mock
 from arches.app.permissions.arches_default_deny import (
     ArchesDefaultDenyPermissionFramework,
 )
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase
 
 from catalina.permissions import blanket_roles
 from catalina.permissions.blanket_roles import (
@@ -16,7 +16,9 @@ from catalina.permissions.blanket_roles import (
 
 BASE = ArchesDefaultDenyPermissionFramework
 CHANGE_PERM = "change_resourceinstance"
-SYSTEM_SETTINGS_ID = "00000000-0000-0000-0000-000000000001"
+# blanket_roles reads arches' system_settings object, which override_settings
+# does not reach, so use whatever value it actually sees.
+SYSTEM_SETTINGS_ID = str(blanket_roles.settings.SYSTEM_SETTINGS_RESOURCE_ID)
 
 
 def _user(**attrs):
@@ -39,7 +41,6 @@ def _framework(full=False, read=False):
     return framework
 
 
-@override_settings(SYSTEM_SETTINGS_RESOURCE_ID=SYSTEM_SETTINGS_ID)
 class BlanketGrantsTests(SimpleTestCase):
     def test_no_user_is_never_granted(self):
         self.assertFalse(_framework(full=True)._blanket_grants(None, VIEW_PERM))
@@ -100,7 +101,6 @@ class CheckResourceInstancePermissionsTests(SimpleTestCase):
         self.assertTrue(result["permitted"])
 
 
-@override_settings(SYSTEM_SETTINGS_RESOURCE_ID=SYSTEM_SETTINGS_ID)
 class GetAllowedInstancesTests(SimpleTestCase):
     def test_member_with_explicit_resources_gets_them_back(self):
         resources = ["a", "b"]
