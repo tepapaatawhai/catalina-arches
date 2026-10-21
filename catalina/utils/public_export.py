@@ -172,28 +172,35 @@ def get_outbound_relations(resource_ids, permitted_nodegroups=None):
 
     candidate_relations = ResourceXResource.objects.filter(**filters).only(
         "resourcexid",
-        "from_resource_id", "from_resource_graph_id",
-        "to_resource_id", "to_resource_graph_id",
-        "relationshiptype", "inverserelationshiptype",
-        "node_id", "tile_id", "notes",
+        "from_resource_id",
+        "from_resource_graph_id",
+        "to_resource_id",
+        "to_resource_graph_id",
+        "relationshiptype",
+        "inverserelationshiptype",
+        "node_id",
+        "tile_id",
+        "notes",
     )
 
     target_ids = set()
     relations = []
     for rel in candidate_relations.iterator():
         target_ids.add(rel.to_resource_id)
-        relations.append({
-            "resourcexid": str(rel.resourcexid),
-            "from_resource": str(rel.from_resource_id),
-            "from_resource_graph": str(rel.from_resource_graph_id),
-            "to_resource": str(rel.to_resource_id),
-            "to_resource_graph": str(rel.to_resource_graph_id),
-            "relationshiptype": rel.relationshiptype,
-            "inverserelationshiptype": rel.inverserelationshiptype,
-            "nodeid": str(rel.node_id) if rel.node_id else None,
-            "tileid": str(rel.tile_id) if rel.tile_id else None,
-            "notes": rel.notes or "",
-        })
+        relations.append(
+            {
+                "resourcexid": str(rel.resourcexid),
+                "from_resource": str(rel.from_resource_id),
+                "from_resource_graph": str(rel.from_resource_graph_id),
+                "to_resource": str(rel.to_resource_id),
+                "to_resource_graph": str(rel.to_resource_graph_id),
+                "relationshiptype": rel.relationshiptype,
+                "inverserelationshiptype": rel.inverserelationshiptype,
+                "nodeid": str(rel.node_id) if rel.node_id else None,
+                "tileid": str(rel.tile_id) if rel.tile_id else None,
+                "notes": rel.notes or "",
+            }
+        )
 
     diagnostics = {
         "candidate_relations": len(relations),
@@ -293,9 +300,7 @@ def extract_file_references(resources, file_node_ids=None):
     seen = set()
     files = []
     for resource_data in resources:
-        rid = resource_data.get("resourceinstance", {}).get(
-            "resourceinstanceid", ""
-        )
+        rid = resource_data.get("resourceinstance", {}).get("resourceinstanceid", "")
         for tile in resource_data.get("tiles", []):
             data = tile.get("data") or {}
             for node_id, value in data.items():
@@ -310,13 +315,15 @@ def extract_file_references(resources, file_node_ids=None):
                     if not key or key in seen:
                         continue
                     seen.add(key)
-                    files.append({
-                        "file_id": file_id,
-                        "name": name,
-                        "url": entry.get("url"),
-                        "resourceinstanceid": rid,
-                        "nodeid": node_id,
-                    })
+                    files.append(
+                        {
+                            "file_id": file_id,
+                            "name": name,
+                            "url": entry.get("url"),
+                            "resourceinstanceid": rid,
+                            "nodeid": node_id,
+                        }
+                    )
     return sorted(files, key=lambda f: (f["name"] or "", f["file_id"] or ""))
 
 
@@ -373,9 +380,16 @@ def export_graphs_to_dir(graph_ids, dest_dir, indent=2, resource_files=None):
     return exported
 
 
-PKG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pkg")
+PKG_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pkg"
+)
 # Hand-maintained builder config copied verbatim from the package into the export
-STATIC_PKG_ENTRIES = ("indexTemplates", "ontologies", "prebuild.json", "permissions.json")
+STATIC_PKG_ENTRIES = (
+    "indexTemplates",
+    "ontologies",
+    "prebuild.json",
+    "permissions.json",
+)
 
 
 def copy_static_package_files(dest_dir):
@@ -468,8 +482,7 @@ def _write_resources_batched(resource_ids, user=None, indent=None, label="Resour
             eta_str = ""
 
         sys.stderr.write(
-            f"\r  {label}: {end}/{total} "
-            f"({end * 100 // total}%){eta_str}   "
+            f"\r  {label}: {end}/{total} " f"({end * 100 // total}%){eta_str}   "
         )
         sys.stderr.flush()
 
@@ -491,9 +504,7 @@ def _write_resources_batched(resource_ids, user=None, indent=None, label="Resour
         batch_export = json.loads(raw_json)
         del raw_json
         returned_ids = set()
-        for resource_data in (
-            batch_export.get("business_data", {}).get("resources", [])
-        ):
+        for resource_data in batch_export.get("business_data", {}).get("resources", []):
             returned_ids.add(
                 str(resource_data.get("resourceinstance", {}).get("resourceinstanceid"))
             )
@@ -511,13 +522,13 @@ def _write_resources_batched(resource_ids, user=None, indent=None, label="Resour
             )
 
     elapsed = time.monotonic() - t0
-    sys.stderr.write(
-        f"\r  {label}: {total}/{total} (100%) done in {int(elapsed)}s\n"
-    )
+    sys.stderr.write(f"\r  {label}: {total}/{total} (100%) done in {int(elapsed)}s\n")
     sys.stderr.flush()
 
 
-def _write_reference_resources(resource_ids, output_path, user=None, indent=2, label="Resources"):
+def _write_reference_resources(
+    resource_ids, output_path, user=None, indent=2, label="Resources"
+):
     """Export resources to a standalone business_data JSON file.
 
     Used for reference resource types (Person, Period) that are exported as
@@ -525,7 +536,10 @@ def _write_reference_resources(resource_ids, output_path, user=None, indent=2, l
     """
     resources = []
     for resource_data in _write_resources_batched(
-        resource_ids, user=user, indent=indent, label=label,
+        resource_ids,
+        user=user,
+        indent=indent,
+        label=label,
     ):
         resources.append(resource_data)
 
@@ -673,7 +687,8 @@ def export_resources(
             nonlocal resource_count, actor_tiles_filtered_count
             # Strip associated_actor tiles referencing non-exported Persons
             actor_tiles_filtered_count += strip_unresolvable_actor_tiles(
-                resource_data, person_ids,
+                resource_data,
+                person_ids,
             )
             _scope_resource(resource_data)
 
@@ -691,13 +706,15 @@ def export_resources(
                     for entry in value:
                         if not isinstance(entry, dict) or "file_id" not in entry:
                             continue
-                        file_refs.append({
-                            "file_id": entry.get("file_id"),
-                            "name": entry.get("path") or entry.get("name"),
-                            "url": entry.get("url"),
-                            "resourceinstanceid": ri.get("resourceinstanceid", ""),
-                            "nodeid": node_id,
-                        })
+                        file_refs.append(
+                            {
+                                "file_id": entry.get("file_id"),
+                                "name": entry.get("path") or entry.get("name"),
+                                "url": entry.get("url"),
+                                "resourceinstanceid": ri.get("resourceinstanceid", ""),
+                                "nodeid": node_id,
+                            }
+                        )
 
             # Write to the file for this resource's model
             bd.write(ri.get("graph_id"), resource_data)
@@ -707,7 +724,9 @@ def export_resources(
         # them here to avoid exporting them twice.
         resource_ids = [r for r in resource_ids if r not in person_ids]
         for resource_data in _write_resources_batched(
-            [str(rid) for rid in resource_ids], user=user, indent=indent,
+            [str(rid) for rid in resource_ids],
+            user=user,
+            indent=indent,
             label="Resources",
         ):
             _write_resource(resource_data)
@@ -729,7 +748,9 @@ def export_resources(
         if target_ids:
             target_count = 0
             for resource_data in _write_resources_batched(
-                sorted(target_ids), user=user, indent=indent,
+                sorted(target_ids),
+                user=user,
+                indent=indent,
                 label="Related resources",
             ):
                 _write_resource(resource_data)
@@ -747,7 +768,9 @@ def export_resources(
         if key and key not in seen:
             seen.add(key)
             unique_file_refs.append(ref)
-    file_refs = sorted(unique_file_refs, key=lambda r: (r["name"] or "", r["file_id"] or ""))
+    file_refs = sorted(
+        unique_file_refs, key=lambda r: (r["name"] or "", r["file_id"] or "")
+    )
     diagnostics["referenced_files"] = file_refs
     diagnostics["actor_tiles_filtered"] = actor_tiles_filtered_count
 
@@ -757,7 +780,9 @@ def export_resources(
         _write_reference_resources(
             sorted(str(pid) for pid in person_ids),
             os.path.join(bd_dir, business_data_filename("Person")),
-            user=user, indent=indent, label="Person",
+            user=user,
+            indent=indent,
+            label="Person",
         )
         graph_ids.add(PERSON_GRAPH_ID)
 
@@ -768,7 +793,9 @@ def export_resources(
         _write_reference_resources(
             sorted(str(pid) for pid in period_ids),
             os.path.join(bd_dir, business_data_filename("Period")),
-            user=user, indent=indent, label="Period",
+            user=user,
+            indent=indent,
+            label="Period",
         )
         graph_ids.add(PERIOD_GRAPH_ID)
 
@@ -786,9 +813,13 @@ def export_resources(
     # 2. Export graphs
     resource_files = {gid: [fn] for gid, fn in bd.filenames.items()}
     if person_ids:
-        resource_files.setdefault(PERSON_GRAPH_ID, []).append(business_data_filename("Person"))
+        resource_files.setdefault(PERSON_GRAPH_ID, []).append(
+            business_data_filename("Person")
+        )
     if period_ids:
-        resource_files.setdefault(PERIOD_GRAPH_ID, []).append(business_data_filename("Period"))
+        resource_files.setdefault(PERIOD_GRAPH_ID, []).append(
+            business_data_filename("Period")
+        )
     exported_graphs = export_graphs_to_dir(
         graph_ids, output_dir, indent=indent, resource_files=resource_files
     )
@@ -821,9 +852,7 @@ def package_export(output_dir, archive_name="prebuild.tar"):
 
     # basename only: archive_name may be a key like "starches/prebuild/x.tar"
     # and the local temp file must not point at a non-existent subdirectory.
-    archive_path = os.path.join(
-        tempfile.gettempdir(), os.path.basename(archive_name)
-    )
+    archive_path = os.path.join(tempfile.gettempdir(), os.path.basename(archive_name))
     mode = "w:gz" if archive_name.endswith((".tgz", ".tar.gz")) else "w"
     with tarfile.open(archive_path, mode) as tar:
         tar.add(output_dir, arcname="prebuild")
@@ -878,17 +907,21 @@ def resolve_export_user(username=None, expected_group="Public Export"):
         try:
             user = User.objects.get(username="anonymous")
         except User.DoesNotExist:
-            messages.append((
-                "warning",
-                "No export user and no 'anonymous' user found: NO nodegroup "
-                "filtering applied (every nodegroup will be exported).",
-            ))
+            messages.append(
+                (
+                    "warning",
+                    "No export user and no 'anonymous' user found: NO nodegroup "
+                    "filtering applied (every nodegroup will be exported).",
+                )
+            )
             return None, messages
-        messages.append((
-            "info",
-            "Applying the 'anonymous' user's nodegroup permissions "
-            "(public-visitor view).",
-        ))
+        messages.append(
+            (
+                "info",
+                "Applying the 'anonymous' user's nodegroup permissions "
+                "(public-visitor view).",
+            )
+        )
         return user, messages
 
     try:
@@ -903,18 +936,22 @@ def resolve_export_user(username=None, expected_group="Public Export"):
 
     group_names = set(user.groups.values_list("name", flat=True))
     if expected_group not in group_names:
-        messages.append((
-            "warning",
-            f"'{username}' is not in the '{expected_group}' group, so the "
-            f"public-export whitelist will not be applied.",
-        ))
+        messages.append(
+            (
+                "warning",
+                f"'{username}' is not in the '{expected_group}' group, so the "
+                f"public-export whitelist will not be applied.",
+            )
+        )
     extra = group_names - {expected_group}
     if extra:
-        messages.append((
-            "warning",
-            f"'{username}' also belongs to {sorted(extra)}; read_nodegroup "
-            f"grants from those groups can re-expose denied nodegroups.",
-        ))
+        messages.append(
+            (
+                "warning",
+                f"'{username}' also belongs to {sorted(extra)}; read_nodegroup "
+                f"grants from those groups can re-expose denied nodegroups.",
+            )
+        )
     return user, messages
 
 
@@ -950,10 +987,12 @@ def run_export_pipeline(
 
     export_ids = get_exportable_resource_ids(states)
     if not export_ids:
-        msg.append((
-            "warning",
-            "No matching resources found, exporting graphs and structure only.",
-        ))
+        msg.append(
+            (
+                "warning",
+                "No matching resources found, exporting graphs and structure only.",
+            )
+        )
     out["export_ids"] = [str(r) for r in export_ids]
 
     result, diagnostics = export_resources(
