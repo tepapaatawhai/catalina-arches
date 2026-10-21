@@ -14,7 +14,10 @@ class CatalinaConfig(AppConfig):
 
     def ready(self):
         from catalina.oauth_application import sync_gis_oauth_application
-        from catalina.utils import graph_validation_patch
+        from catalina.utils import createable_resources_patch, graph_validation_patch
+
+        # Inactive graphs should not appear in the "Add new resource" menu.
+        createable_resources_patch.apply()
 
         # Saving a large graph in the Graph Designer re-serialized every widget
         # once per node; see the module docstring.
