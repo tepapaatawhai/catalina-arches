@@ -39,3 +39,23 @@ article.main-search-container .search-footer {
 .search-results-body{
     overflow-y: scroll;
 }
+
+// Image workbench: the sidepanel is a flex column whose height comes from its
+// parent, which is not constrained in the resource editor. A tall form (e.g. an
+// image with many fields) therefore grew the panel past the viewport and pushed
+// the Delete/Save buttons off the bottom of the page where they could not be
+// clicked. Cap the panel at the viewport, let it scroll, and keep the buttons
+// stuck to its bottom edge.
+.workbench-card-sidepanel {
+    // The panel starts below the nav bar, lifecycle bar and section header.
+    max-height: calc(100vh - 145px);
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    > .display-in-workflow-step {
+        flex: 0 0 auto;
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+    }
+}
