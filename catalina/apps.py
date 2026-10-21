@@ -14,6 +14,11 @@ class CatalinaConfig(AppConfig):
 
     def ready(self):
         from catalina.oauth_application import sync_gis_oauth_application
+        from catalina.utils import graph_validation_patch
+
+        # Saving a large graph in the Graph Designer re-serialized every widget
+        # once per node; see the module docstring.
+        graph_validation_patch.apply()
 
         # post_migrate is only sent for apps with a models module, which catalina
         # lacks, so each handler listens for the app whose table it writes to.
