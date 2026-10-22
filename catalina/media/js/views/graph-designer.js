@@ -645,6 +645,38 @@ var GraphDesignerView = BaseManagerView.extend({
             }
         });
 
+        // Saving graph settings posts the whole serialized graph, which can take
+        // a while. The Save Edits button only toggled contentLoading, which no
+        // template reads, so there was no feedback and it could be clicked again.
+        // Show the page loading mask (which also blocks clicks) until it finishes.
+        (function() {
+            var settings = viewModel.graphSettingsViewModel;
+            var save = settings.save;
+            var saving = false;
+            settings.save = function() {
+                if (saving) {
+                    return;
+                }
+                saving = true;
+                viewModel.loading(true);
+                var subscription = settings.contentLoading.subscribe(function(contentLoading) {
+                    if (!contentLoading) {
+                        subscription.dispose();
+                        saving = false;
+                        viewModel.loading(false);
+                    }
+                });
+                try {
+                    save.apply(settings, arguments);
+                } catch (e) {
+                    subscription.dispose();
+                    saving = false;
+                    viewModel.loading(false);
+                    throw e;
+                }
+            };
+        })();
+
         viewModel.report = new ReportModel(_.extend(data, {
             graphModel: viewModel.graphModel,
             cards: viewModel.cardTree.topCards,
