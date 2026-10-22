@@ -14,7 +14,11 @@ class CatalinaConfig(AppConfig):
 
     def ready(self):
         from catalina.oauth_application import sync_gis_oauth_application
-        from catalina.utils import createable_resources_patch, graph_validation_patch
+        from catalina.utils import (
+            createable_resources_patch,
+            graph_validation_patch,
+            permitted_graphids_patch,
+        )
 
         # Inactive graphs should not appear in the "Add new resource" menu.
         createable_resources_patch.apply()
@@ -22,6 +26,9 @@ class CatalinaConfig(AppConfig):
         # Saving a large graph in the Graph Designer re-serialized every widget
         # once per node; see the module docstring.
         graph_validation_patch.apply()
+
+        # Resolving permitted graph ids instantiated ~20k Node rows per search.
+        permitted_graphids_patch.apply()
 
         # post_migrate is only sent for apps with a models module, which catalina
         # lacks, so each handler listens for the app whose table it writes to.
