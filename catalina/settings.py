@@ -118,6 +118,8 @@ SECRET_KEY = "django-insecure-uakb+p1m4%)vx2)6!r&q0*ff@j90ih^35(j0xb#0j-)o_f)y)b
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(os.environ.get("DJANGO_DEBUG", False))
 
+TIME_ZONE = "Pacific/Auckland"
+
 ROOT_URLCONF = "catalina.urls"
 ROOT_HOSTCONF = "catalina.hosts"
 
