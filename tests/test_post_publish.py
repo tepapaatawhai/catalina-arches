@@ -105,16 +105,18 @@ class RunPostPublishTests(SimpleTestCase):
 
 class MigrateStaleInstancesStepTests(SimpleTestCase):
     def test_skipped_while_the_arches_data_update_is_running(self):
-        with mock.patch.object(
-            post_publish, "data_update_running", return_value=True
-        ), mock.patch.object(post_publish, "call_command") as call_command:
+        with (
+            mock.patch.object(post_publish, "data_update_running", return_value=True),
+            mock.patch.object(post_publish, "call_command") as call_command,
+        ):
             self.assertIsNone(post_publish.migrate_stale_instances("g1"))
         call_command.assert_not_called()
 
     def test_scoped_to_the_graph_by_exact_id(self):
-        with mock.patch.object(
-            post_publish, "data_update_running", return_value=False
-        ), mock.patch.object(post_publish, "call_command") as call_command:
+        with (
+            mock.patch.object(post_publish, "data_update_running", return_value=False),
+            mock.patch.object(post_publish, "call_command") as call_command,
+        ):
             post_publish.migrate_stale_instances("g1")
         args = call_command.call_args.args
         self.assertEqual(args[0], "migrate_stale_instances")
@@ -136,9 +138,7 @@ class DataUpdateRunningTests(SimpleTestCase):
             return post_publish.data_update_running()
 
     def test_active_task_is_seen(self):
-        app = self._inspector(
-            {"w1": [{"name": post_publish.DATA_UPDATE_TASK}]}, {}
-        )
+        app = self._inspector({"w1": [{"name": post_publish.DATA_UPDATE_TASK}]}, {})
         self.assertTrue(self._check(app))
 
     def test_reserved_task_is_seen(self):
@@ -146,7 +146,9 @@ class DataUpdateRunningTests(SimpleTestCase):
         self.assertTrue(self._check(app))
 
     def test_other_tasks_are_ignored(self):
-        app = self._inspector({"w1": [{"name": "catalina.tasks.after_graph_publish"}]}, {})
+        app = self._inspector(
+            {"w1": [{"name": "catalina.tasks.after_graph_publish"}]}, {}
+        )
         self.assertFalse(self._check(app))
 
     def test_no_worker_answering_does_not_block(self):
@@ -158,14 +160,14 @@ class SignalReceiverTests(SimpleTestCase):
         return mock.Mock(graph_id="g1", user_id=7)
 
     def test_queues_on_commit_for_a_new_publication(self):
-        with mock.patch.object(
-            post_publish.transaction, "on_commit", side_effect=lambda f: f()
-        ), mock.patch.object(post_publish, "_queue") as queue, override_settings(
-            AUTO_MIGRATE_STALE_INSTANCES=True
+        with (
+            mock.patch.object(
+                post_publish.transaction, "on_commit", side_effect=lambda f: f()
+            ),
+            mock.patch.object(post_publish, "_queue") as queue,
+            override_settings(AUTO_MIGRATE_STALE_INSTANCES=True),
         ):
-            post_publish.schedule_after_publish(
-                None, self._publication(), created=True
-            )
+            post_publish.schedule_after_publish(None, self._publication(), created=True)
         queue.assert_called_once_with(
             "g1",
             7,
@@ -175,7 +177,9 @@ class SignalReceiverTests(SimpleTestCase):
 
     def test_ignores_updates_and_fixture_loads(self):
         with mock.patch.object(post_publish.transaction, "on_commit") as on_commit:
-            post_publish.schedule_after_publish(None, self._publication(), created=False)
+            post_publish.schedule_after_publish(
+                None, self._publication(), created=False
+            )
             post_publish.schedule_after_publish(
                 None, self._publication(), created=True, raw=True
             )

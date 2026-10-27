@@ -198,9 +198,9 @@ def migrate_stale_instances(graph_id, user_id=None):
     if user_id:
         from django.contrib.auth.models import User
 
-        username = User.objects.filter(pk=user_id).values_list(
-            "username", flat=True
-        ).first()
+        username = (
+            User.objects.filter(pk=user_id).values_list("username", flat=True).first()
+        )
         if username:
             args += ["--as-user", username]
 
@@ -220,7 +220,10 @@ def run_post_publish(graph_id, user_id=None, migrate=None):
     steps = []
     if migrate:
         steps.append(
-            ("migrate_stale_instances", lambda: migrate_stale_instances(graph_id, user_id))
+            (
+                "migrate_stale_instances",
+                lambda: migrate_stale_instances(graph_id, user_id),
+            )
         )
     steps += [
         ("rebuild_geometries", lambda: rebuild_geometries(graph_id)),
@@ -232,7 +235,9 @@ def run_post_publish(graph_id, user_id=None, migrate=None):
     for name, step in steps:
         try:
             results[name] = step()
-            logger.info("Post-publish %s for graph %s: %s", name, graph_id, results[name])
+            logger.info(
+                "Post-publish %s for graph %s: %s", name, graph_id, results[name]
+            )
         except Exception as exc:
             results[name] = exc
             logger.exception("Post-publish %s failed for graph %s", name, graph_id)
