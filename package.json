@@ -49,6 +49,7 @@
         "jquery-validation": "^1.20.0",
         "webpack": "^5.104.1",
         "serialize-javascript": "^7.0.3",
+        "maplibre-gl": "^6.4.1",
         "editorconfig": {
             "minimatch": "^9.0.7"
         }
