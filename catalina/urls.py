@@ -5,6 +5,7 @@ from django.urls import include, path, re_path
 
 from . import views_azure
 from .overlays.proxy import ArcGISPortalProxyView
+from .views_controlled_lists import FilteredListsView, FilteredListView
 
 urlpatterns = []
 
@@ -23,6 +24,16 @@ urlpatterns = [
     path("", include("arches.urls")),
     path("azure_auth/callback", views_azure.azure_auth_callback),
     path("azure_auth/", include("azure_auth.urls")),
+    path(
+        "api/controlled_list_filtered",
+        FilteredListsView.as_view(),
+        name="controlled_list_filtered_all",
+    ),
+    path(
+        "api/controlled_list_filtered/<uuid:list_id>",
+        FilteredListView.as_view(),
+        name="controlled_list_filtered",
+    ),
     path("", include("arches_controlled_lists.urls")),
     path("", include("arches_vue_components.urls")),
     path("", include("arches_her.urls")),
