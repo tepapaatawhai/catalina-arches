@@ -179,9 +179,11 @@ jobs:
           check-latest: true
 
       - name: Install Java, GDAL, and other system dependencies
+        timeout-minutes: 15
         run: |
-          sudo apt update
-          sudo apt-get install libxml2-dev libpq-dev openjdk-8-jdk libgdal-dev libxslt-dev
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update
+          sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
+            libxml2-dev libpq-dev openjdk-8-jdk-headless libgdal-dev libxslt-dev
 
       - name: Install Python packages
         run: |
