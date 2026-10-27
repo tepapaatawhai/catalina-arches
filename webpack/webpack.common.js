@@ -336,6 +336,19 @@ module.exports = () => {
                     filename: 'webpack-stats.json',
                 }),
                 new VueLoaderPlugin(),
+                // Catalina: force every import of this viewmodel (bare, relative or
+                // via a require.context) to the project override, which hides
+                // inactive graphs from the "Create a new ..." rows. The core widgets
+                // otherwise ended up bundled against the core copy.
+                new webpack.NormalModuleReplacementPlugin(
+                    /(^|[\\/])viewmodels[\\/]resource-instance-select(\.js)?$/,
+                    (resource) => {
+                        const override = Path.resolve(__dirname, APP_ROOT, 'media', 'js', 'viewmodels', 'resource-instance-select.js');
+                        if (fs.existsSync(override)) {
+                            resource.request = override;
+                        }
+                    }
+                ),
             ],
             resolve: {
                 modules: [Path.resolve(__dirname, PROJECT_RELATIVE_NODE_MODULES_PATH)],
