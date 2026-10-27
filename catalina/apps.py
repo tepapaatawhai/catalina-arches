@@ -30,6 +30,24 @@ class CatalinaConfig(AppConfig):
         # Resolving permitted graph ids instantiated ~20k Node rows per search.
         permitted_graphids_patch.apply()
 
+        # Publishing a graph wipes its geometry and relationship rows; see the
+        # module docstring.
+        from arches.app.models.models import GraphXPublishedGraph
+        from celery.signals import task_postrun
+        from django.db.models.signals import post_save
+
+        from catalina import post_publish
+
+        post_save.connect(
+            post_publish.schedule_after_publish,
+            sender=GraphXPublishedGraph,
+            dispatch_uid="catalina.schedule_after_publish",
+        )
+        task_postrun.connect(
+            post_publish.queue_after_data_update,
+            dispatch_uid="catalina.queue_after_data_update",
+        )
+
         # post_migrate is only sent for apps with a models module, which catalina
         # lacks, so each handler listens for the app whose table it writes to.
         post_migrate.connect(

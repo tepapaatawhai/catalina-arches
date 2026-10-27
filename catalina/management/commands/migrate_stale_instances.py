@@ -36,6 +36,11 @@ class Command(BaseCommand):
             help="Only graphs whose name contains this text (case-insensitive)",
         )
         parser.add_argument(
+            "--graph-id",
+            default=None,
+            help="Only the graph with this id (exact, unlike --graph)",
+        )
+        parser.add_argument(
             "--exclude",
             nargs="+",
             default=[],
@@ -61,6 +66,8 @@ class Command(BaseCommand):
         ).order_by("name")
         if options["graph"]:
             graphs = graphs.filter(name__icontains=options["graph"])
+        if options["graph_id"]:
+            graphs = graphs.filter(pk=options["graph_id"])
         if options["exclude"]:
             graphs = graphs.exclude(name__in=options["exclude"])
 

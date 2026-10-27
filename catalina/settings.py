@@ -65,6 +65,15 @@ BLANKET_READ_ACCESS_GROUPS = ["Editor"]  # view on all
 if os.environ.get("CATALINA_BLANKET_ROLES", "True").lower() in ("true", "1", "yes"):
     PERMISSION_FRAMEWORK = "blanket_roles.BlanketRoleDenyFramework"
 
+# After a graph is published, instances left on its previous publication are moved
+# to the new one (the migrate_stale_instances command, for that graph only). Off by
+# default because it deletes the tiles of removed nodegroups and drops the data of
+# removed nodes; see catalina.post_publish. The geometry, relationship and tile
+# cache repairs that run after a publish are not behind this flag.
+AUTO_MIGRATE_STALE_INSTANCES = os.environ.get(
+    "AUTO_MIGRATE_STALE_INSTANCES", "False"
+).lower() in ("true", "1", "yes")
+
 LOCALE_PATHS.insert(0, os.path.join(APP_ROOT, "locale"))
 
 MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY", "")
