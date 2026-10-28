@@ -1,3 +1,4 @@
+import ast
 import json
 import logging
 import os
@@ -346,6 +347,31 @@ def _resolve_i18n_name(name):
     return str(name)
 
 
+def _restore_stringified_i18n(value):
+    """Turn str(dict) i18n values (e.g. "{'en': ''}") back into real dicts.
+
+    The graph exporter can emit node, card and graph descriptions as the Python
+    repr of their i18n dict. Starches interpolates descriptions into its
+    ``::Title{description}::`` markup, so a stringified dict breaks the parser
+    and the rest of the asset page renders as raw text. Walks ``value`` in
+    place and returns it.
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            value[key] = _restore_stringified_i18n(item)
+    elif isinstance(value, list):
+        for i, item in enumerate(value):
+            value[i] = _restore_stringified_i18n(item)
+    elif isinstance(value, str) and value.startswith("{'") and value.endswith("}"):
+        try:
+            parsed = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return value
+        if isinstance(parsed, dict) and all(isinstance(k, str) for k in parsed):
+            return parsed
+    return value
+
+
 def export_graphs_to_dir(graph_ids, dest_dir, indent=2, resource_files=None):
     """Export graph JSON files and write the graphs.json manifest.
 
@@ -365,6 +391,7 @@ def export_graphs_to_dir(graph_ids, dest_dir, indent=2, resource_files=None):
     exported = []
     manifest = {}
     for graph in graphs_data.get("graph", []):
+        _restore_stringified_i18n(graph)
         graph_id = str(graph.get("graphid", ""))
         graph_name = _resolve_i18n_name(graph.get("name", "Unknown"))
         safe_name = graph_name.replace("/", "-")
