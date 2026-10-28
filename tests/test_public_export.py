@@ -39,6 +39,37 @@ class NamingTests(SimpleTestCase):
         self.assertEqual(pe._resolve_i18n_name("Plain"), "Plain")
 
 
+class RestoreStringifiedI18nTests(SimpleTestCase):
+    def test_parses_stringified_dict(self):
+        self.assertEqual(pe._restore_stringified_i18n("{'en': ''}"), {"en": ""})
+        self.assertEqual(
+            pe._restore_stringified_i18n("{'en': \"It's\", 'mi': 'Kia ora'}"),
+            {"en": "It's", "mi": "Kia ora"},
+        )
+
+    def test_walks_nested_dicts_and_lists_in_place(self):
+        graph = {
+            "description": "{'en': 'Top'}",
+            "nodes": [{"description": "{'en': 'Node'}", "name": "Plain"}],
+        }
+        result = pe._restore_stringified_i18n(graph)
+        self.assertIs(result, graph)
+        self.assertEqual(graph["description"], {"en": "Top"})
+        self.assertEqual(graph["nodes"][0]["description"], {"en": "Node"})
+        self.assertEqual(graph["nodes"][0]["name"], "Plain")
+
+    def test_leaves_real_dicts_and_plain_strings_alone(self):
+        self.assertEqual(pe._restore_stringified_i18n({"en": "x"}), {"en": "x"})
+        self.assertEqual(pe._restore_stringified_i18n("plain"), "plain")
+        self.assertIsNone(pe._restore_stringified_i18n(None))
+
+    def test_leaves_unparseable_or_non_string_keyed_values_alone(self):
+        self.assertEqual(pe._restore_stringified_i18n("{'broken"), "{'broken")
+        self.assertEqual(pe._restore_stringified_i18n("{'a': }"), "{'a': }")
+        self.assertEqual(pe._restore_stringified_i18n("{'a'}"), "{'a'}")
+        self.assertEqual(pe._restore_stringified_i18n("{'x', 'y'}"), "{'x', 'y'}")
+
+
 class ActorTileTests(SimpleTestCase):
     def test_keeps_tiles_outside_the_actors_nodegroup(self):
         other = {"nodegroup_id": "other", "data": {}}
@@ -484,6 +515,30 @@ class GraphExportTests(SimpleTestCase):
                 }
             },
         )
+
+    def test_export_graphs_to_dir_restores_stringified_descriptions(self):
+        graphs = {
+            "graph": [
+                {
+                    "graphid": "g1",
+                    "name": {"en": "Aircraft"},
+                    "isresource": True,
+                    "description": "{'en': ''}",
+                    "nodes": [{"description": "{'en': 'A node'}"}],
+                    "cards": [{"description": {"en": "Already a dict"}}],
+                }
+            ]
+        }
+        with (
+            tempfile.TemporaryDirectory() as dest,
+            mock.patch.object(pe, "get_graphs_for_export", return_value=graphs),
+        ):
+            pe.export_graphs_to_dir(["g1"], dest)
+            with open(os.path.join(dest, "graphs/resource_models/Aircraft.json")) as f:
+                graph = json.load(f)["graph"][0]
+        self.assertEqual(graph["description"], {"en": ""})
+        self.assertEqual(graph["nodes"][0]["description"], {"en": "A node"})
+        self.assertEqual(graph["cards"][0]["description"], {"en": "Already a dict"})
 
     def test_copy_static_package_files_skips_dotfiles_and_missing_entries(self):
         with tempfile.TemporaryDirectory() as root:
