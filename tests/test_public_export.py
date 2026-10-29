@@ -645,6 +645,41 @@ class GraphExportTests(SimpleTestCase):
             )
 
 
+class MediaPrefixTests(SimpleTestCase):
+    def _copy(self, env):
+        with tempfile.TemporaryDirectory() as root:
+            src = os.path.join(root, "pkg")
+            dest = os.path.join(root, "dest")
+            os.makedirs(src)
+            os.makedirs(dest)
+            config = {
+                "files": [
+                    {"matchUrlPrefix": "/media", "prefix": "https://dev.example/media"},
+                    {"node": ".x"},
+                ],
+                "indexCharacters": 2000,
+            }
+            with open(os.path.join(src, "prebuild.json"), "w") as handle:
+                json.dump(config, handle)
+            with (
+                mock.patch.object(pe, "PKG_DIR", src),
+                mock.patch.dict(os.environ, env, clear=True),
+            ):
+                pe.copy_static_package_files(dest)
+            with open(os.path.join(dest, "prebuild.json")) as handle:
+                return json.load(handle)
+
+    def test_prefix_is_rewritten_from_env(self):
+        config = self._copy({pe.SITE_URL_ENV: "https://uat.example/"})
+        self.assertEqual(config["files"][0]["prefix"], "https://uat.example/media")
+        self.assertNotIn("prefix", config["files"][1])
+        self.assertEqual(config["indexCharacters"], 2000)
+
+    def test_prefix_is_kept_without_env(self):
+        config = self._copy({})
+        self.assertEqual(config["files"][0]["prefix"], "https://dev.example/media")
+
+
 class RunPipelineTests(SimpleTestCase):
     def _run(self, ids, export_result, **kwargs):
         with (

@@ -487,9 +487,31 @@ def write_package_scaffold(dest_dir):
         f.write(PREBUILD_GITIGNORE)
 
 
+SITE_URL_ENV = "PREBUILD_STARCHES_URL"
+
+
+def set_media_prefix(prebuild_path, site_url):
+    """Point the ``files`` entries of a prebuild.json at ``site_url``'s media.
+
+    The file URLs the builder writes must be absolute for the site that serves
+    them, which differs per environment, so the packaged default is overridden.
+    """
+    with open(prebuild_path) as handle:
+        config = json.load(handle)
+    for entry in config.get("files", []):
+        if match := entry.get("matchUrlPrefix"):
+            entry["prefix"] = site_url.rstrip("/") + match
+    with open(prebuild_path, "w") as handle:
+        json.dump(config, handle, indent=4)
+        handle.write("\n")
+
+
 def copy_static_package_files(dest_dir):
     """Copy builder config (index templates, ontologies, prebuild.json, permissions.json)
     from catalina/pkg into the export, dotfiles like .gitkeep included.
+
+    If $PREBUILD_STARCHES_URL is set, the media prefixes in prebuild.json are
+    rewritten to that site (the packaged default is the dev site).
 
     Returns the list of entries copied; missing entries are logged and skipped.
     """
@@ -507,6 +529,9 @@ def copy_static_package_files(dest_dir):
             logger.warning("Static package entry %s not found at %s", entry, src)
             continue
         copied.append(entry)
+    site_url = os.environ.get(SITE_URL_ENV)
+    if site_url and "prebuild.json" in copied:
+        set_media_prefix(os.path.join(dest_dir, "prebuild.json"), site_url)
     return copied
 
 
