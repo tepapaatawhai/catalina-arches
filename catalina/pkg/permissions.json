@@ -1,0 +1,71 @@
+{
+    "BibliographicSource": true,
+    "ArchiveSource": true,
+    "Action": true,
+    "HeritageItem": {
+        "": true,
+        "addresses": true,
+        "construction_phases": true,
+        "current_base_map": true,
+        "descriptions": {
+            "path": ".data.ba34557b-b554-11ea-ab95-f875a44e0e11.labels[0].value",
+            "allowed": [
+                "Description",
+                "History",
+                "Boundary Description",
+                "Process Statement",
+                "Reference"
+            ]
+        },
+        "designation_and_protection_assignment": true,
+        "designation_and_protection_timespan": true,
+        "external_cross_references": true,
+        "geometry": true,
+        "images": true,
+        "localities_administrative_areas": true,
+        "location_data": true,
+        "lot_on_plan": true,
+        "area_assignments": true,
+        "area_assignment": true,
+        "monument_names": true,
+        "monument_type": true,
+        "national_grid_references": true,
+        "spatial_metadata_descriptions": true,
+        "spatial_record_compilation": true,
+        "system_reference_numbers": true,
+        "use_phase": true,
+        "associated_actors": true
+    },
+    "MaritimeVessel": {
+        "": true,
+        "names": true,
+        "descriptions": true,
+        "use_phase": true,
+        "construction_phases": true,
+        "national_grid_references": true,
+        "localities_administrative_areas": true,
+        "current_base_map": true,
+        "location_data": true,
+        "spatial_metadata_descriptions": true,
+        "geometry": true
+    },
+    "Registry": {
+        "": true,
+        "names": true,
+        "descriptions": true,
+        "associated_actors": true
+    },
+    "Activity": {
+        "": true,
+        "geometry": true,
+        "activity_names": true,
+        "activity_descriptions": true
+    },
+    "Person": {},
+    "Period": {},
+    "Organization": {},
+    "Licence": {
+        "licence_number": true,
+        "report": true
+    }
+}

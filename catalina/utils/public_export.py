@@ -394,7 +394,7 @@ def export_graphs_to_dir(graph_ids, dest_dir, indent=2, resource_files=None):
         _restore_stringified_i18n(graph)
         graph_id = str(graph.get("graphid", ""))
         graph_name = _resolve_i18n_name(graph.get("name", "Unknown"))
-        safe_name = graph_name.replace("/", "-")
+        safe_name = graph_name.replace("/", "_")
         is_model = bool(graph.get("isresource"))
         graphs_dir = models_dir if is_model else branches_dir
         filepath = os.path.join(graphs_dir, f"{safe_name}.json")
@@ -431,9 +431,31 @@ STATIC_PKG_ENTRIES = (
 )
 
 
+# Layout the starches build expects at the package root, as in the notebook
+# prebuild: empty folders (kept by a .gitkeep) and the root .gitignore.
+SCAFFOLD_DIRS = (
+    "fgb",
+    "business_data/files",
+    "business_data/relations",
+    "business_data/resource_views",
+)
+PREBUILD_GITIGNORE = "*\n!.gitignore\n!graphs.json\n!permissions.json\n!prebuild.json\n"
+
+
+def write_package_scaffold(dest_dir):
+    """Write the empty folders and root .gitignore the starches build expects."""
+    for rel in SCAFFOLD_DIRS:
+        path = os.path.join(dest_dir, rel)
+        os.makedirs(path, exist_ok=True)
+        if rel != "fgb":
+            open(os.path.join(path, ".gitkeep"), "w").close()
+    with open(os.path.join(dest_dir, ".gitignore"), "w") as f:
+        f.write(PREBUILD_GITIGNORE)
+
+
 def copy_static_package_files(dest_dir):
     """Copy builder config (index templates, ontologies, prebuild.json, permissions.json)
-    from catalina/pkg into the export, skipping dotfiles like .gitkeep.
+    from catalina/pkg into the export, dotfiles like .gitkeep included.
 
     Returns the list of entries copied; missing entries are logged and skipped.
     """
@@ -444,9 +466,7 @@ def copy_static_package_files(dest_dir):
         src = os.path.join(PKG_DIR, entry)
         dst = os.path.join(dest_dir, entry)
         if os.path.isdir(src):
-            shutil.copytree(
-                src, dst, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".*")
-            )
+            shutil.copytree(src, dst, dirs_exist_ok=True)
         elif os.path.isfile(src):
             shutil.copy2(src, dst)
         else:
@@ -481,8 +501,9 @@ def export_controlled_lists_to_dir(list_ids, dest_dir):
             [controlled_list], list_items, format="pretty-xml"
         )
 
-        slug = controlled_list.name.lower().replace(" ", "_").replace("/", "_")
-        filepath = os.path.join(cl_dir, f"{slug}.xml")
+        # Named by list id, as in the notebook prebuild. Names are not unique
+        # (or can be empty), so name-based files overwrote one another.
+        filepath = os.path.join(cl_dir, f"{controlled_list.pk}.xml")
         if isinstance(skos_data, str):
             skos_data = skos_data.encode("utf-8")
         with open(filepath, "wb") as f:
@@ -888,6 +909,7 @@ def export_resources(
 
     # 4. Copy builder config (index templates etc.) from the package
     diagnostics["copied_static_files"] = copy_static_package_files(output_dir)
+    write_package_scaffold(output_dir)
 
     return output_dir, diagnostics
 

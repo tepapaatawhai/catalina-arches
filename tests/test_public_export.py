@@ -496,7 +496,7 @@ class GraphExportTests(SimpleTestCase):
             self.assertEqual(names, ["Heritage/Place", "Branch"])
             self.assertTrue(
                 os.path.exists(
-                    os.path.join(dest, "graphs/resource_models/Heritage-Place.json")
+                    os.path.join(dest, "graphs/resource_models/Heritage_Place.json")
                 )
             )
             self.assertTrue(
@@ -540,6 +540,40 @@ class GraphExportTests(SimpleTestCase):
         self.assertEqual(graph["nodes"][0]["description"], {"en": "A node"})
         self.assertEqual(graph["cards"][0]["description"], {"en": "Already a dict"})
 
+    def test_write_package_scaffold_writes_folders_and_gitignore(self):
+        with tempfile.TemporaryDirectory() as dest:
+            pe.write_package_scaffold(dest)
+            self.assertTrue(os.path.isdir(os.path.join(dest, "fgb")))
+            for sub in ("files", "relations", "resource_views"):
+                self.assertTrue(
+                    os.path.exists(
+                        os.path.join(dest, "business_data", sub, ".gitkeep")
+                    )
+                )
+            with open(os.path.join(dest, ".gitignore")) as handle:
+                self.assertEqual(handle.read(), pe.PREBUILD_GITIGNORE)
+
+    def test_export_controlled_lists_to_dir_names_files_by_list_id(self):
+        first = SimpleNamespace(pk="id-1", name="Same Name")
+        second = SimpleNamespace(pk="id-2", name="Same Name")
+        lists = {"id-1": first, "id-2": second}
+        writer = mock.Mock()
+        writer.write_controlled_lists.return_value = "<rdf/>"
+        with (
+            tempfile.TemporaryDirectory() as dest,
+            mock.patch.object(pe, "List") as list_model,
+            mock.patch.object(pe, "ListItem"),
+            mock.patch.object(pe, "SKOSWriter", return_value=writer),
+        ):
+            list_model.DoesNotExist = type("DoesNotExist", (Exception,), {})
+            list_model.objects.get.side_effect = lambda pk: lists[pk]
+            exported = pe.export_controlled_lists_to_dir(["id-1", "id-2"], dest)
+            written = sorted(
+                os.listdir(os.path.join(dest, "reference_data/controlled_lists"))
+            )
+        self.assertEqual(exported, ["Same Name", "Same Name"])
+        self.assertEqual(written, ["id-1.xml", "id-2.xml"])
+
     def test_copy_static_package_files_skips_dotfiles_and_missing_entries(self):
         with tempfile.TemporaryDirectory() as root:
             src = os.path.join(root, "pkg")
@@ -559,7 +593,7 @@ class GraphExportTests(SimpleTestCase):
             self.assertTrue(
                 os.path.exists(os.path.join(dest, "indexTemplates", "a.md"))
             )
-            self.assertFalse(
+            self.assertTrue(
                 os.path.exists(os.path.join(dest, "indexTemplates", ".gitkeep"))
             )
 

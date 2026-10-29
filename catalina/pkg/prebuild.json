@@ -1,0 +1,47 @@
+{
+    "paths": {
+        "geometry": "location_data.geometry.geospatial_coordinates",
+        "location": "location_data.geometry.geospatial_coordinates"
+    },
+    "filters": [
+    ],
+    "maxGeometryStringLength": 1000,
+    "indexTemplates": {
+        "Heritage Place": "heritage-asset-index-hb.md",
+        "Maritime Vessel": "maritime-vessel-index-hb.md",
+        "_unknown": "_unknown-index-hb.md"
+    },
+    "customDatatypes": {
+        "tm65centrepoint": "non-localized-string"
+    },
+    "sources": [
+        {
+            "resources": "prebuild/business_data/t_cabs_data.json",
+            "public": true,
+            "slugPrefix": "ca_bs_"
+        },
+        {
+            "resources": "prebuild/business_data/t_caar_data.json",
+            "public": true,
+            "slugPrefix": "ca_arch_"
+        }
+    ],
+    "referenceSources": [
+        "prebuild/business_data/t_(person|period|area|bibliographic_source|heritage_place|organization|group|artefact|archive_source|place|whenua|activity|event|registry|m_tauranga|tikanga)\\.json$"
+    ],
+    "thumbnail": [
+    ],
+    "files": [{
+        "graph": "Heritage Place",
+        "node": ".images",
+        "matchUrlPrefix": "/media",
+        "prefix": "https://cat-starches.flaxandteal.co.nz/media"
+    }, {
+        "graph": "Digital Object",
+        "node": ".file_content.file",
+        "matchUrlPrefix": "/media",
+        "prefix": "https://cat-starches.flaxandteal.co.nz/media"
+    }],
+    "indexCharacters": 2000,
+    "indexCharactersWarnOnly": true
+}
