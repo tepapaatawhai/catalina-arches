@@ -347,6 +347,40 @@ def _resolve_i18n_name(name):
     return str(name)
 
 
+# Matches the slugs starches already serves, e.g. cat-rnzaf-devon-crash-si-0ce1ee
+SLUG_PREFIX = "cat-"
+SLUG_MAX_LENGTH = 20
+
+
+def slugify_name(name):
+    """Slugify like alizarin's ``slugify``: ASCII only, hyphen separated, cut to 20."""
+    name = re.sub(r"[^a-z0-9\s_-]", "", str(name).lower())
+    name = re.sub(r"[\s_-]+", "-", name).strip("-")
+    return name[:SLUG_MAX_LENGTH].strip("-")
+
+
+def add_resource_slug(resource_data):
+    """Set ``resourceinstance.descriptors.slug`` as the builder would generate it.
+
+    starches-builder takes this slug for the resource's own page and for every
+    link to it, so storing it keeps the two in step. Without it, resources only
+    preloaded as references have no slug and are shown as plain text.
+    """
+    ri = resource_data.get("resourceinstance") or {}
+    rid = str(ri.get("resourceinstanceid") or "")
+    descriptors = ri.get("descriptors")
+    if not rid or not isinstance(descriptors, dict):
+        return
+    lang = "en" if isinstance(descriptors.get("en"), dict) else None
+    if lang is None:
+        lang = next((k for k, v in descriptors.items() if isinstance(v, dict)), None)
+    name = (descriptors.get(lang) or {}).get("name") if lang else None
+    name = name or ri.get("name") or ""
+    descriptors["slug"] = (
+        f"{SLUG_PREFIX}{slugify_name(_resolve_i18n_name(name))}-{rid[:6]}"
+    )
+
+
 def _restore_stringified_i18n(value):
     """Turn str(dict) i18n values (e.g. "{'en': ''}") back into real dicts.
 
@@ -568,6 +602,7 @@ def _write_resources_batched(resource_ids, user=None, indent=None, label="Resour
             returned_ids.add(
                 str(resource_data.get("resourceinstance", {}).get("resourceinstanceid"))
             )
+            add_resource_slug(resource_data)
             yield resource_data
             yielded += 1
         # The writer builds resources from their tiles, so a resource with no

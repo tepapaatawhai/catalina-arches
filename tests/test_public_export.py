@@ -70,6 +70,55 @@ class RestoreStringifiedI18nTests(SimpleTestCase):
         self.assertEqual(pe._restore_stringified_i18n("{'x', 'y'}"), "{'x', 'y'}")
 
 
+class ResourceSlugTests(SimpleTestCase):
+    def test_slugify_name_matches_alizarin(self):
+        self.assertEqual(
+            pe.slugify_name("RNZAF Devon Crash Site"), "rnzaf-devon-crash-si"
+        )
+        self.assertEqual(
+            pe.slugify_name("Flight Lieutenant W A L Trott"), "flight-lieutenant-w"
+        )
+        self.assertEqual(
+            pe.slugify_name("M\u0101ori P\u0101 (site) #1"), "mori-p-site-1"
+        )
+        self.assertEqual(pe.slugify_name("  Hello,   World!! "), "hello-world")
+        self.assertEqual(pe.slugify_name("a--b__c"), "a-b-c")
+        self.assertEqual(pe.slugify_name(""), "")
+
+    def test_add_resource_slug_uses_english_name_and_id(self):
+        resource = {
+            "resourceinstance": {
+                "resourceinstanceid": "0ce1ee85-a301-5f20-aa0f-26ea117eb6eb",
+                "descriptors": {
+                    "en": {"name": "RNZAF Devon Crash Site"},
+                    "mi": {"name": "Undefined"},
+                },
+            }
+        }
+        pe.add_resource_slug(resource)
+        self.assertEqual(
+            resource["resourceinstance"]["descriptors"]["slug"],
+            "cat-rnzaf-devon-crash-si-0ce1ee",
+        )
+
+    def test_add_resource_slug_falls_back_to_other_language(self):
+        resource = {
+            "resourceinstance": {
+                "resourceinstanceid": "abcdef12-0000-0000-0000-000000000000",
+                "descriptors": {"mi": {"name": "Pa"}},
+            }
+        }
+        pe.add_resource_slug(resource)
+        self.assertEqual(
+            resource["resourceinstance"]["descriptors"]["slug"], "cat-pa-abcdef"
+        )
+
+    def test_add_resource_slug_skips_resources_without_descriptors(self):
+        resource = {"resourceinstance": {"resourceinstanceid": "abcdef12"}}
+        pe.add_resource_slug(resource)
+        self.assertNotIn("descriptors", resource["resourceinstance"])
+
+
 class ActorTileTests(SimpleTestCase):
     def test_keeps_tiles_outside_the_actors_nodegroup(self):
         other = {"nodegroup_id": "other", "data": {}}
