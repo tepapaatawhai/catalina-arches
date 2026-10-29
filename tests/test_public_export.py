@@ -546,9 +546,7 @@ class GraphExportTests(SimpleTestCase):
             self.assertTrue(os.path.isdir(os.path.join(dest, "fgb")))
             for sub in ("files", "relations", "resource_views"):
                 self.assertTrue(
-                    os.path.exists(
-                        os.path.join(dest, "business_data", sub, ".gitkeep")
-                    )
+                    os.path.exists(os.path.join(dest, "business_data", sub, ".gitkeep"))
                 )
             with open(os.path.join(dest, ".gitignore")) as handle:
                 self.assertEqual(handle.read(), pe.PREBUILD_GITIGNORE)
