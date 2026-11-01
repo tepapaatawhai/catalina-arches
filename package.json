@@ -29,7 +29,7 @@
     },
     "devDependencies": {
         "arches-dev-dependencies": "archesproject/arches-dev-dependencies#alpha/8.1.0a11",
-        "cypress": "^16.1.0",
+        "cypress": "^16.2.1",
         "wait-on": "^9"
     },
     "nodeModulesPaths": {
