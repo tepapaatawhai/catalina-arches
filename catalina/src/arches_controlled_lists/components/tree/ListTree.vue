@@ -2,7 +2,8 @@
 Catalina override of arches_controlled_lists/components/tree/ListTree.vue (this
 file shadows the upstream one through the "@" alias). Changes: a progress bar
 under the filter box while the lists load or the server-side search is running
-(isBusy). Compare with upstream when upgrading arches_controlled_lists.
+(isBusy), and a "No results found." message when a finished search matches
+nothing (hasNoResults). Compare with upstream when upgrading arches_controlled_lists.
 -->
 <script setup lang="ts">
 import { computed, inject, onMounted, reactive, ref, watch } from "vue";
@@ -67,6 +68,7 @@ const LOADING_LABEL = $gettext("Loading");
 const FILTER_CAPPED_MESSAGE = $gettext(
     "Too many matches to display. Please refine your query.",
 );
+const NO_RESULTS_MESSAGE = $gettext("No results found.");
 
 const listStore = useListStore();
 const selectedLanguage = inject(selectedLanguageKey) as Ref<Language>;
@@ -124,6 +126,16 @@ const { debouncedFilterValue, filteredTree, isFilterCapped } =
         FILTER_RENDER_CAP,
         getSearchableText,
     );
+
+// Only once the debounce has settled and the server-side search has finished.
+const hasNoResults = computed(
+    () =>
+        !!filterValue.value.trim() &&
+        debouncedFilterValue.value === filterValue.value &&
+        !isBusy.value &&
+        !isFilterCapped.value &&
+        filteredTree.value.length === 0,
+);
 
 onMounted(async () => {
     try {
@@ -401,6 +413,14 @@ watch(debouncedFilterValue, async (next) => {
             class="filter-cap-message"
         >
             {{ FILTER_CAPPED_MESSAGE }}
+        </Message>
+        <Message
+            v-if="hasNoResults"
+            severity="info"
+            :closable="false"
+            class="filter-cap-message"
+        >
+            {{ NO_RESULTS_MESSAGE }}
         </Message>
         <ProgressBar
             v-if="isBusy"
