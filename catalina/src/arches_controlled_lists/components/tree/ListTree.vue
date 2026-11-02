@@ -1,12 +1,26 @@
 <!--
 Catalina override of arches_controlled_lists/components/tree/ListTree.vue (this
-file shadows the upstream one through the "@" alias). Changes: a progress bar
-under the filter box while the lists load or the server-side search is running
-(isBusy), and a "No results found." message when a finished search matches
-nothing (hasNoResults). Compare with upstream when upgrading arches_controlled_lists.
+file shadows the upstream one through the "@" alias). Changes:
+- a progress bar under the filter box while the lists load or the server-side
+  search is running (isBusy);
+- a "No results found." message when a finished search matches nothing
+  (hasNoResults);
+- the server-side search loads the ancestors of matches level by level, with
+  parallel requests inside a level, instead of one request at a time;
+- the selected row is scrolled into view when the filter is cleared and on the
+  first load of an item or list URL (scrollSelectedRowIntoView).
+Compare with upstream when upgrading arches_controlled_lists.
 -->
 <script setup lang="ts">
-import { computed, inject, onMounted, reactive, ref, watch } from "vue";
+import {
+    computed,
+    inject,
+    nextTick,
+    onMounted,
+    reactive,
+    ref,
+    watch,
+} from "vue";
 import { useRoute } from "vue-router";
 import { useGettext } from "vue3-gettext";
 import { useToast } from "primevue/usetoast";
@@ -34,7 +48,7 @@ import { useListStore } from "@/arches_controlled_lists/stores/useListStore.ts";
 import ListTreeControls from "@/arches_controlled_lists/components/tree/ListTreeControls.vue";
 import TreeRow from "@/arches_controlled_lists/components/tree/TreeRow.vue";
 
-import type { Ref } from "vue";
+import type { ComponentPublicInstance, Ref } from "vue";
 import type { RouteLocationNormalizedLoadedGeneric } from "vue-router";
 import type { TreePassThroughMethodOptions } from "primevue/tree";
 import type { TreeExpandedKeys, TreeSelectionKeys } from "primevue/tree";
@@ -49,6 +63,7 @@ import type {
 
 const FILTER_DEBOUNCE_MS = 250;
 const FILTER_RENDER_CAP = 2500;
+const CHILD_LOAD_CONCURRENCY = 8;
 
 const toast = useToast();
 const { $gettext } = useGettext();
@@ -89,6 +104,7 @@ const newListFormValue = ref("");
 const nextNewList = ref();
 const refetcher = ref(0);
 const rerenderTree = ref(0);
+const treeRef = ref<ComponentPublicInstance>();
 
 const { setDisplayedRow } = inject<{ setDisplayedRow: RowSetter }>(
     displayedRowKey,
@@ -256,9 +272,12 @@ async function revealItemInTree(itemId: string): Promise<TreeNode | null> {
     }
 }
 
+let hasScrolledToRoute = false;
+
 async function navigate(newRoute: RouteLocationNormalizedLoadedGeneric) {
     switch (newRoute.name) {
         case routeNames.splash:
+            hasScrolledToRoute = true;
             setDisplayedRow(null);
             expandedKeys.value = {};
             selectedKeys.value = {};
@@ -275,6 +294,11 @@ async function navigate(newRoute: RouteLocationNormalizedLoadedGeneric) {
                     [list.data.id]: true,
                 };
                 selectedKeys.value = { [list.data.id]: true };
+                if (!hasScrolledToRoute) {
+                    hasScrolledToRoute = true;
+                    await nextTick();
+                    scrollSelectedRowIntoView();
+                }
             } else {
                 setDisplayedRow(null);
             }
@@ -301,6 +325,14 @@ async function navigate(newRoute: RouteLocationNormalizedLoadedGeneric) {
                     ...Object.fromEntries(idsToExpand.map((id) => [id, true])),
                 };
                 selectedKeys.value = { [found.data.id]: true };
+                // Only on the first load of the page (a refresh or a pasted
+                // link). Later route changes come from clicking a row that is
+                // already on screen.
+                if (!hasScrolledToRoute) {
+                    hasScrolledToRoute = true;
+                    await nextTick();
+                    scrollSelectedRowIntoView();
+                }
             } else {
                 toast.add({
                     severity: ERROR,
@@ -335,6 +367,87 @@ watch(
     },
 );
 
+// Clearing the filter swaps the tree back to the full list, restores the
+// expanded keys from before the search (so the clicked item's ancestors may be
+// collapsed) and resets the scroll to the top. Re-expand the path to the
+// selected row and bring it back into view.
+watch(debouncedFilterValue, async (next, previous) => {
+    if (next || !previous) return;
+    // Let the filter composable restore its expanded keys snapshot first.
+    await nextTick();
+    const selectedKey = Object.keys(selectedKeys.value)[0];
+    const selectedItem = selectedKey
+        ? listStore.findItem(selectedKey)
+        : undefined;
+    if (selectedItem) {
+        const ancestorKeys: Record<string, boolean> = {
+            [selectedItem.list_id]: true,
+        };
+        let parentId = selectedItem.parent_id;
+        while (parentId) {
+            ancestorKeys[parentId] = true;
+            parentId = listStore.findItem(parentId)?.parent_id ?? null;
+        }
+        expandedKeys.value = { ...expandedKeys.value, ...ancestorKeys };
+        await nextTick();
+    }
+    scrollSelectedRowIntoView();
+});
+
+function scrollSelectedRowIntoView() {
+    const scrollToSelected = () => {
+        const selectedRow = (
+            treeRef.value?.$el as HTMLElement | undefined
+        )?.querySelector<HTMLElement>('[data-p-selected="true"]');
+        if (selectedRow) {
+            centerInScrollParent(selectedRow);
+        }
+    };
+    requestAnimationFrame(scrollToSelected);
+    // Retry once the tree has finished re-rendering the full list.
+    setTimeout(scrollToSelected, 300);
+}
+
+// scrollIntoView also scrolls the overflow:hidden Tree root and the page,
+// which shifts the layout and leaves a blank band at the bottom. Only move the
+// nearest element that actually scrolls.
+function centerInScrollParent(element: HTMLElement) {
+    let parent = element.parentElement;
+    while (parent) {
+        const { overflowY } = getComputedStyle(parent);
+        if (
+            (overflowY === "auto" || overflowY === "scroll") &&
+            parent.scrollHeight > parent.clientHeight
+        ) {
+            const rowRect = element.getBoundingClientRect();
+            const parentRect = parent.getBoundingClientRect();
+            parent.scrollTop +=
+                rowRect.top -
+                parentRect.top -
+                (parent.clientHeight - rowRect.height) / 2;
+            return;
+        }
+        parent = parent.parentElement;
+    }
+}
+
+async function runWithConcurrency<T>(
+    values: T[],
+    limit: number,
+    run: (value: T) => Promise<unknown>,
+) {
+    let next = 0;
+    const workers = Array.from(
+        { length: Math.min(limit, values.length) },
+        async () => {
+            while (next < values.length) {
+                await run(values[next++]);
+            }
+        },
+    );
+    await Promise.all(workers);
+}
+
 let serverFilterAbortToken = 0;
 watch(debouncedFilterValue, async (next) => {
     if (!next || filteredTree.value.length > 0 || isFilterCapped.value) {
@@ -346,36 +459,46 @@ watch(debouncedFilterValue, async (next) => {
     const token = ++serverFilterAbortToken;
     isSearching.value = true;
     try {
-        for (const list of listStore.lists) {
-            if (token !== serverFilterAbortToken) return;
-            try {
-                const data = await fetchFilteredList(list.id, next);
-                const items = (data.items ?? []) as Array<{
-                    id: string;
-                    parent_ids?: string[];
-                }>;
-                const parentIdsToLoad = new Set<string>();
-                for (const item of items) {
-                    for (const pid of item.parent_ids ?? []) {
-                        parentIdsToLoad.add(pid);
-                    }
+        // fetchFilteredList answers every list from one cached request.
+        const results = await Promise.all(
+            listStore.lists.map(async (list: ControlledList) => {
+                try {
+                    return await fetchFilteredList(list.id, next);
+                } catch (error) {
+                    console.warn(
+                        `Server-side search of list ${list.id} failed:`,
+                        error,
+                    );
+                    return null;
                 }
-                for (const pid of parentIdsToLoad) {
-                    if (token !== serverFilterAbortToken) return;
-                    if (!listStore.hasLoadedChildren(pid)) {
-                        try {
-                            await listStore.loadChildren(pid);
-                        } catch {
-                            /* surface via toast only if all loads fail */
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn(
-                    `Server-side search of list ${list.id} failed:`,
-                    error,
-                );
+            }),
+        );
+        if (token !== serverFilterAbortToken) return;
+
+        // parent_ids run root to immediate parent, so group them by depth.
+        // loadChildren only attaches children to a parent already in the
+        // store, so one level must finish before the next starts.
+        const parentIdsByDepth: Set<string>[] = [];
+        for (const data of results) {
+            const items = (data?.items ?? []) as Array<{
+                parent_ids?: string[];
+            }>;
+            for (const item of items) {
+                (item.parent_ids ?? []).forEach((pid, depth) => {
+                    (parentIdsByDepth[depth] ??= new Set()).add(pid);
+                });
             }
+        }
+        for (const parentIds of parentIdsByDepth) {
+            const pending = [...(parentIds ?? [])].filter(
+                (pid) => !listStore.hasLoadedChildren(pid),
+            );
+            await runWithConcurrency(pending, CHILD_LOAD_CONCURRENCY, (pid) =>
+                listStore.loadChildren(pid).catch(() => {
+                    /* a failed parent just leaves its matches out of the tree */
+                }),
+            );
+            if (token !== serverFilterAbortToken) return;
         }
     } finally {
         if (token === serverFilterAbortToken) {
@@ -431,6 +554,7 @@ watch(debouncedFilterValue, async (next) => {
     </div>
     <Tree
         v-if="filteredTree"
+        ref="treeRef"
         :key="rerenderTree"
         v-model:selection-keys="selectedKeys"
         v-model:expanded-keys="expandedKeys"
