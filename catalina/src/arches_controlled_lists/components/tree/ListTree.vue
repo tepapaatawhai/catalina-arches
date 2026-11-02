@@ -42,6 +42,12 @@ import {
     listAsNode,
     nodeIsList,
 } from "@/arches_controlled_lists/utils.ts";
+import {
+    ancestorExpandedKeys,
+    centerInScrollParent,
+    groupParentIdsByDepth,
+    runWithConcurrency,
+} from "@/catalina/utils.ts";
 import { useCappedTreeFilter } from "@/arches_controlled_lists/components/tree/utils/capped-filter.ts";
 import { fetchFilteredList } from "@/arches_controlled_lists/api.ts";
 import { useListStore } from "@/arches_controlled_lists/stores/useListStore.ts";
@@ -380,14 +386,9 @@ watch(debouncedFilterValue, async (next, previous) => {
         ? listStore.findItem(selectedKey)
         : undefined;
     if (selectedItem) {
-        const ancestorKeys: Record<string, boolean> = {
-            [selectedItem.list_id]: true,
-        };
-        let parentId = selectedItem.parent_id;
-        while (parentId) {
-            ancestorKeys[parentId] = true;
-            parentId = listStore.findItem(parentId)?.parent_id ?? null;
-        }
+        const ancestorKeys = ancestorExpandedKeys(selectedItem, (id) =>
+            listStore.findItem(id),
+        );
         expandedKeys.value = { ...expandedKeys.value, ...ancestorKeys };
         await nextTick();
     }
@@ -406,46 +407,6 @@ function scrollSelectedRowIntoView() {
     requestAnimationFrame(scrollToSelected);
     // Retry once the tree has finished re-rendering the full list.
     setTimeout(scrollToSelected, 300);
-}
-
-// scrollIntoView also scrolls the overflow:hidden Tree root and the page,
-// which shifts the layout and leaves a blank band at the bottom. Only move the
-// nearest element that actually scrolls.
-function centerInScrollParent(element: HTMLElement) {
-    let parent = element.parentElement;
-    while (parent) {
-        const { overflowY } = getComputedStyle(parent);
-        if (
-            (overflowY === "auto" || overflowY === "scroll") &&
-            parent.scrollHeight > parent.clientHeight
-        ) {
-            const rowRect = element.getBoundingClientRect();
-            const parentRect = parent.getBoundingClientRect();
-            parent.scrollTop +=
-                rowRect.top -
-                parentRect.top -
-                (parent.clientHeight - rowRect.height) / 2;
-            return;
-        }
-        parent = parent.parentElement;
-    }
-}
-
-async function runWithConcurrency<T>(
-    values: T[],
-    limit: number,
-    run: (value: T) => Promise<unknown>,
-) {
-    let next = 0;
-    const workers = Array.from(
-        { length: Math.min(limit, values.length) },
-        async () => {
-            while (next < values.length) {
-                await run(values[next++]);
-            }
-        },
-    );
-    await Promise.all(workers);
 }
 
 let serverFilterAbortToken = 0;
@@ -478,19 +439,9 @@ watch(debouncedFilterValue, async (next) => {
         // parent_ids run root to immediate parent, so group them by depth.
         // loadChildren only attaches children to a parent already in the
         // store, so one level must finish before the next starts.
-        const parentIdsByDepth: Set<string>[] = [];
-        for (const data of results) {
-            const items = (data?.items ?? []) as Array<{
-                parent_ids?: string[];
-            }>;
-            for (const item of items) {
-                (item.parent_ids ?? []).forEach((pid, depth) => {
-                    (parentIdsByDepth[depth] ??= new Set()).add(pid);
-                });
-            }
-        }
+        const parentIdsByDepth = groupParentIdsByDepth(results);
         for (const parentIds of parentIdsByDepth) {
-            const pending = [...(parentIds ?? [])].filter(
+            const pending = parentIds.filter(
                 (pid) => !listStore.hasLoadedChildren(pid),
             );
             await runWithConcurrency(pending, CHILD_LOAD_CONCURRENCY, (pid) =>
