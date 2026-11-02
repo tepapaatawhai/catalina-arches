@@ -4,6 +4,7 @@ from arches.app.models.system_settings import settings
 from arches.app.search.elasticsearch_dsl_builder import Match, Exists
 from arches.app.search.search_term import SearchTerm
 import logging
+import re
 
 bngpoint = Widget.objects.get(name="bngpoint")
 
@@ -34,87 +35,14 @@ class BNGCentreDataType(BaseDataType):
     ):
 
         errors = []
-        gridSquareArray = [
-            "NA",
-            "NB",
-            "NC",
-            "ND",
-            "NE",
-            "NF",
-            "NG",
-            "NH",
-            "NJ",
-            "NK",
-            "NL",
-            "NM",
-            "NN",
-            "NO",
-            "NP",
-            "NR",
-            "NS",
-            "NT",
-            "NU",
-            "NV",
-            "NW",
-            "NX",
-            "NY",
-            "NZ",
-            "OA",
-            "OB",
-            "OF",
-            "OG",
-            "OL",
-            "OM",
-            "OQ",
-            "OR",
-            "OV",
-            "OW",
-            "SA",
-            "SB",
-            "SC",
-            "SD",
-            "SE",
-            "SF",
-            "SG",
-            "SH",
-            "SJ",
-            "SK",
-            "SL",
-            "SM",
-            "SN",
-            "SO",
-            "SP",
-            "SQ",
-            "SR",
-            "SS",
-            "ST",
-            "SU",
-            "SV",
-            "SW",
-            "SX",
-            "SY",
-            "SZ",
-            "TA",
-            "TB",
-            "TF",
-            "TG",
-            "TL",
-            "TM",
-            "TQ",
-            "TR",
-            "TV",
-            "TW",
-        ]
         if value is not None:
-            try:
-                # CS - Validation for datatype.  Replicates functionality in widget which will be removed once datatype validation is fixed.
-                firstTwoCharacters = value[0:2]
-                numberElement = value[2:]
-
-                firstTwoCharacters in gridSquareArray
-                isinstance(int(numberElement), int)
-                len(value) == 12
-            except Exception:
+            # NZTM value stored as "easting,northing" in metres
+            match = re.fullmatch(r"(\d{7}),(\d{7})", str(value))
+            if (
+                not match
+                or not 1000000 <= int(match.group(1)) <= 2200000
+                or not 4700000 <= int(match.group(2)) <= 6300000
+            ):
                 errors.append({"type": "ERROR", "message": "Issue with input data"})
 
         return errors

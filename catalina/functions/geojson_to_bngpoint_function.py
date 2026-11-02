@@ -29,7 +29,7 @@ class GeoJSONToBNGPoint(BaseFunction):
         raise NotImplementedError
 
     def save_bngpoint(self, tile, request, is_function_save_method=True):
-        """Finds the BNG Alphanumeric value for the centroid of the envelope(extent) of the Geometry,
+        """Finds the NZTM value for the centroid of the envelope(extent) of the Geometry,
         and saves that value to the bng_output_nodegroup of the tile.
 
         Args:
@@ -48,81 +48,7 @@ class GeoJSONToBNGPoint(BaseFunction):
             return
 
         srid_LatLong = 4326
-        srid_BngAbs = 27700
-        # Reference grid for Easting/Northing to BNG Alphas.
-
-        os_grid = {
-            "09": "NA",
-            "19": "NB",
-            "29": "NC",
-            "39": "ND",
-            "49": "NE",
-            "59": "OA",
-            "69": "OB",
-            "08": "NF",
-            "18": "NG",
-            "28": "NH",
-            "38": "NJ",
-            "48": "NK",
-            "58": "OF",
-            "68": "OG",
-            "07": "NL",
-            "17": "NM",
-            "27": "NN",
-            "37": "NO",
-            "47": "NP",
-            "57": "OL",
-            "67": "OM",
-            "06": "NQ",
-            "16": "NR",
-            "26": "NS",
-            "36": "NT",
-            "46": "NU",
-            "56": "OQ",
-            "66": "OR",
-            "05": "NV",
-            "15": "NW",
-            "25": "NX",
-            "35": "NY",
-            "45": "NZ",
-            "55": "OV",
-            "65": "OW",
-            "04": "SA",
-            "14": "SB",
-            "24": "SC",
-            "34": "SD",
-            "44": "SE",
-            "54": "TA",
-            "64": "TB",
-            "03": "SF",
-            "13": "SG",
-            "23": "SH",
-            "33": "SJ",
-            "43": "SK",
-            "53": "TF",
-            "63": "TG",
-            "02": "SL",
-            "12": "SM",
-            "22": "SN",
-            "32": "SO",
-            "42": "SP",
-            "52": "TL",
-            "62": "TM",
-            "01": "SQ",
-            "11": "SR",
-            "21": "SS",
-            "31": "ST",
-            "41": "SU",
-            "51": "TQ",
-            "61": "TR",
-            "00": "SV",
-            "10": "SW",
-            "20": "SX",
-            "30": "SY",
-            "40": "SZ",
-            "50": "TV",
-            "60": "TW",
-        }
+        srid_Nztm = 2193
 
         geojsonnode = self.config["geojson_input_node"]
         bngnode = self.config["bng_output_node"]
@@ -154,28 +80,22 @@ class GeoJSONToBNGPoint(BaseFunction):
             # Explicitly declare the SRID for the current lat/long.
             centroidPoint = GEOSGeometry(centroidPoint, srid=srid_LatLong)
 
-            # Transform to Absolute BNG.
-            centroidPoint.transform(srid_BngAbs, False)
+            # Transform to NZTM.
+            centroidPoint.transform(srid_Nztm, False)
 
-            # The BNG grid only covers Great Britain (0-700km E, 0-1300km N). A location
-            # elsewhere (e.g. New Zealand) has no grid reference, so skip it rather than
-            # blocking the save.
+            # A location outside the NZTM extent (e.g. Great Britain) has no valid
+            # reference, so skip it rather than blocking the save.
             if not (
-                0 <= centroidPoint.coords[0] < 700000
-                and 0 <= centroidPoint.coords[1] < 1300000
+                1000000 <= centroidPoint.coords[0] <= 2200000
+                and 4700000 <= centroidPoint.coords[1] <= 6300000
             ):
                 return
 
-            # Get initial Easting and Northing digits. N.B. Left Zero pad integer coords to 6 digits!
-            easting = str(int(centroidPoint.coords[0])).zfill(6)
-            northing = str(int(centroidPoint.coords[1])).zfill(6)
-            gridref = easting[0] + northing[0]
-
-            # Get AlphaNumeric BNG
-            try:
-                gridref = os_grid[gridref] + easting[1:6] + northing[1:6]
-            except KeyError:
-                return
+            # Stored as "easting,northing" in whole metres.
+            gridref = "%d,%d" % (
+                round(centroidPoint.coords[0]),
+                round(centroidPoint.coords[1]),
+            )
 
             if self.config["bng_output_nodegroup"] == str(tile.nodegroup_id):
                 tile.data[bngnode] = gridref

@@ -31,7 +31,7 @@ class BNGPointToGeoJSON(BaseFunction):
         raise NotImplementedError
 
     def save_geojson(self, tile, request, is_function_save_method=True):
-        """Finds the equivalen GeoJSON for a BNG Alphanumeric value and saves that value to the
+        """Finds the equivalen GeoJSON for an NZTM value and saves that value to the
         geojson nodegroup of the tile.
 
         Args:
@@ -50,104 +50,22 @@ class BNGPointToGeoJSON(BaseFunction):
             return
 
         bngValueReturned = ""
-        gridSquare = {
-            "NA": [0, 9],
-            "NB": [1, 9],
-            "NC": [2, 9],
-            "ND": [3, 9],
-            "NE": [4, 9],
-            "OA": [5, 9],
-            "OB": [6, 9],
-            "NF": [0, 8],
-            "NG": [1, 8],
-            "NH": [2, 8],
-            "NJ": [3, 8],
-            "NK": [4, 8],
-            "OF": [5, 8],
-            "OG": [6, 8],
-            "NL": [0, 7],
-            "NM": [1, 7],
-            "NN": [2, 7],
-            "NO": [3, 7],
-            "NP": [4, 7],
-            "OL": [5, 7],
-            "OM": [6, 7],
-            "NQ": [0, 6],
-            "NR": [1, 6],
-            "NS": [2, 6],
-            "NT": [3, 6],
-            "NU": [4, 6],
-            "OQ": [5, 6],
-            "OR": [6, 6],
-            "NV": [0, 5],
-            "NW": [1, 5],
-            "NX": [2, 5],
-            "NY": [3, 5],
-            "NZ": [4, 5],
-            "OV": [5, 5],
-            "OW": [6, 5],
-            "SA": [0, 4],
-            "SB": [1, 4],
-            "SC": [2, 4],
-            "SD": [3, 4],
-            "SE": [4, 4],
-            "TA": [5, 4],
-            "TB": [6, 4],
-            "SF": [0, 3],
-            "SG": [1, 3],
-            "SH": [2, 3],
-            "SJ": [3, 3],
-            "SK": [4, 3],
-            "TF": [5, 3],
-            "TG": [6, 3],
-            "SL": [0, 2],
-            "SM": [1, 2],
-            "SN": [2, 2],
-            "SO": [3, 2],
-            "SP": [4, 2],
-            "TL": [5, 2],
-            "TM": [6, 2],
-            "SQ": [0, 1],
-            "SR": [1, 1],
-            "SS": [2, 1],
-            "ST": [3, 1],
-            "SU": [4, 1],
-            "TQ": [5, 1],
-            "TR": [6, 1],
-            "SV": [0, 0],
-            "SW": [1, 0],
-            "SX": [2, 0],
-            "SY": [3, 0],
-            "SZ": [4, 0],
-            "TV": [5, 0],
-            "TW": [6, 0],
-        }
-
         bngnode = self.config["bng_node"]
         geojsonNode = self.config["geojson_node"]
         bngValueReturned = tile.data[bngnode]
 
-        if bngValueReturned != None:
+        if bngValueReturned:
             """
             The following section turns the alphanumberic BNG value in the tile into a point geometry object and then transforms that object
             into WGS 1984 long/lat projection system.
             """
 
             dt = datetime.now()
-            gridSquareLetters = bngValueReturned[0:2]
-            bngValueNumbers = bngValueReturned[2:]
-            splitSection = int(len(bngValueNumbers) / 2)
-            gridSquareNumbers = gridSquare[gridSquareLetters]
-            eastingValue = str(gridSquareNumbers[0]) + str(
-                bngValueNumbers[:splitSection]
-            )
-            northingValue = str(gridSquareNumbers[1]) + str(
-                bngValueNumbers[splitSection:]
-            )
-            osgb36PointString = "POINT (" + eastingValue + " " + northingValue + ")"
-            osgb36Point = GEOSGeometry(osgb36PointString, srid=27700)
-            osgb36Point.transform(4326, False)
-            pointGeoJSON = json.loads(osgb36Point.geojson)
+            eastingValue, northingValue = bngValueReturned.split(",")
+            nztmPointString = "POINT (" + eastingValue + " " + northingValue + ")"
+            nztmPoint = GEOSGeometry(nztmPointString, srid=2193)
+            nztmPoint.transform(4326, False)
+            pointGeoJSON = json.loads(nztmPoint.geojson)
 
             """
                 This section creates a geojson object required in the format required by Arches.  The date and time the object was
