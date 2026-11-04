@@ -8,6 +8,18 @@ large, churning resource set):
   * BLANKET_FULL_ACCESS_GROUPS  -> view/change/delete on every resource instance
   * BLANKET_READ_ACCESS_GROUPS  -> view on every resource instance
 
+Roles can also be managed without code: a group that holds the Django model
+permission (view/change/delete_resourceinstance) conveys that same blanket
+access to its members. This is read straight off the group's permissions, so
+it is configured in the group UI or admin like any other role.
+
+Arches also gates features on fixed-name groups (Resource Editor, Graph Editor,
+RDM Administrator). Those gates accept the group OR the real permission in
+GATE_PERMISSIONS, so a group holding for example ``change_graphmodel`` gets the
+Graph Designer without being named "Graph Editor". Roles with no natural
+permission (Resource Reviewer, Resource Exporter, Application Administrator,
+System Administrator) stay group-membership only.
+
 Group names are read from Django settings so each project can pick its own
 role names without touching this module.
 
@@ -28,6 +40,9 @@ This framework only takes effect when settings.PERMISSION_FRAMEWORK points at it
 (env-gated, off by default), so importing it has no effect on production.
 """
 
+from django.contrib.auth.models import Permission
+from django.db.models import Q
+
 from arches.app.models.models import ResourceInstance
 from arches.app.models.system_settings import settings
 from arches.app.permissions.arches_default_deny import (
@@ -40,8 +55,45 @@ READ_ACCESS_GROUPS = getattr(settings, "BLANKET_READ_ACCESS_GROUPS", ["Editor"])
 
 VIEW_PERM = "view_resourceinstance"
 
+# Arches gates features on membership of these fixed-name groups. A group
+# holding any listed (app_label, codename) permission also counts as that role.
+GATE_PERMISSIONS = {
+    "Resource Editor": [("models", "change_resourceinstance")],
+    "Graph Editor": [("models", "change_graphmodel")],
+    "RDM Administrator": [("arches_controlled_lists", "change_list")],
+}
+
 
 class BlanketRoleDenyFramework(ArchesDefaultDenyPermissionFramework):
+    def user_in_group_by_name(self, user, names):
+        """Group membership by name, or the equivalent real permission.
+
+        Every Arches gate (``group_required``, ``user_is_resource_editor`` and
+        so on) goes through here, so honouring the permissions in one place
+        covers them all. Upgrade-only: membership still counts.
+        """
+        if super().user_in_group_by_name(user, names):
+            return True
+        wanted = [perm for n in names for perm in GATE_PERMISSIONS.get(n, [])]
+        if not wanted or not getattr(user, "is_authenticated", False):
+            return False
+        query = Q()
+        for app_label, codename in wanted:
+            query |= Q(content_type__app_label=app_label, codename=codename)
+        return Permission.objects.filter(query, group__user=user).exists()
+
+    def user_has_group_model_perm(self, user, permission):
+        """Whether any of ``user``'s groups holds the model permission.
+
+        Queries group permissions directly rather than ``user.has_perm``, which
+        would route back into this permission framework.
+        """
+        return Permission.objects.filter(
+            group__user=user,
+            codename=permission,
+            content_type__model="resourceinstance",
+        ).exists()
+
     def _blanket_grants(self, user, permission, resource=None):
         """Whether ``user`` gets ``permission`` purely via a blanket role."""
         if user is None or not getattr(user, "is_authenticated", False):
@@ -59,7 +111,7 @@ class BlanketRoleDenyFramework(ArchesDefaultDenyPermissionFramework):
             user, READ_ACCESS_GROUPS
         ):
             return True
-        return False
+        return self.user_has_group_model_perm(user, permission)
 
     def check_resource_instance_permissions(
         self, user, resourceid, permission, *, resource=None

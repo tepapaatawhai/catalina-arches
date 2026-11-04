@@ -17,6 +17,7 @@ class CatalinaConfig(AppConfig):
         from catalina.utils import (
             createable_resources_patch,
             graph_validation_patch,
+            has_group_patch,
             permitted_graphids_patch,
         )
 
@@ -29,6 +30,10 @@ class CatalinaConfig(AppConfig):
 
         # Resolving permitted graph ids instantiated ~20k Node rows per search.
         permitted_graphids_patch.apply()
+
+        # The manager menu checked group names directly, hiding Graph Designer
+        # and the Reference Data Manager from role-permission groups.
+        has_group_patch.apply()
 
         # Publishing a graph wipes its geometry and relationship rows; see the
         # module docstring.

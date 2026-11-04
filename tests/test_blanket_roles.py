@@ -26,8 +26,8 @@ def _user(**attrs):
     return SimpleNamespace(**{**defaults, **attrs})
 
 
-def _framework(full=False, read=False):
-    """A framework whose group membership checks are answered from ``full``/``read``."""
+def _framework(full=False, read=False, perms=()):
+    """A framework whose group checks are answered from ``full``/``read``/``perms``."""
     framework = BlanketRoleDenyFramework()
 
     def in_group(user, names):
@@ -38,6 +38,7 @@ def _framework(full=False, read=False):
         return False
 
     framework.user_in_group_by_name = in_group
+    framework.user_has_group_model_perm = lambda user, permission: permission in perms
     return framework
 
 
@@ -68,6 +69,16 @@ class BlanketGrantsTests(SimpleTestCase):
         framework = _framework(read=True)
         self.assertTrue(framework._blanket_grants(_user(), VIEW_PERM))
         self.assertFalse(framework._blanket_grants(_user(), CHANGE_PERM))
+
+    def test_group_model_permission_grants_only_that_permission(self):
+        framework = _framework(perms=(CHANGE_PERM,))
+        self.assertTrue(framework._blanket_grants(_user(), CHANGE_PERM))
+        self.assertFalse(framework._blanket_grants(_user(), VIEW_PERM))
+
+    def test_group_model_permission_never_grants_system_settings(self):
+        resource = SimpleNamespace(pk=SYSTEM_SETTINGS_ID)
+        framework = _framework(perms=(VIEW_PERM,))
+        self.assertFalse(framework._blanket_grants(_user(), VIEW_PERM, resource))
 
     def test_non_member_is_not_granted(self):
         self.assertFalse(_framework()._blanket_grants(_user(), VIEW_PERM))
@@ -166,3 +177,47 @@ class GetPermissionSearchFilterTests(SimpleTestCase):
         ):
             result = _framework().get_permission_search_filter(_user())
         self.assertIs(result, sentinel)
+
+
+class UserInGroupByNameTests(SimpleTestCase):
+    def _check(self, names, *, base=False, authenticated=True, exists=True):
+        framework = BlanketRoleDenyFramework()
+        queryset = mock.MagicMock()
+        queryset.filter.return_value.exists.return_value = exists
+        with (
+            mock.patch.object(BASE, "user_in_group_by_name", return_value=base),
+            mock.patch.object(blanket_roles.Permission, "objects", queryset),
+        ):
+            result = framework.user_in_group_by_name(
+                _user(is_authenticated=authenticated), names
+            )
+        return result, queryset
+
+    def test_membership_still_counts(self):
+        result, queryset = self._check(["Graph Editor"], base=True, exists=False)
+        self.assertTrue(result)
+        queryset.filter.assert_not_called()
+
+    def test_real_permission_counts_as_the_role(self):
+        for name in blanket_roles.GATE_PERMISSIONS:
+            result, queryset = self._check([name])
+            self.assertTrue(result, name)
+            queryset.filter.assert_called_once()
+
+    def test_without_the_permission_it_is_denied(self):
+        result, _ = self._check(["Graph Editor"], exists=False)
+        self.assertFalse(result)
+
+    def test_roles_without_a_permission_are_not_looked_up(self):
+        for name in (
+            "System Administrator",
+            "Application Administrator",
+            "Administrator",
+        ):
+            result, queryset = self._check([name])
+            self.assertFalse(result, name)
+            queryset.filter.assert_not_called()
+
+    def test_unauthenticated_user_is_denied(self):
+        result, _ = self._check(["Graph Editor"], authenticated=False)
+        self.assertFalse(result)

@@ -625,7 +625,9 @@ AZURE_AUTH = {
     "AUTO_CREATE_UNKNOWN_USERS": True,  # Create users even if not in directory
 }
 
-LOGIN_URL = "/azure_auth/login"
+# Send unauthenticated or unauthorised users to the normal Arches login page
+# (which offers Azure sign-in) rather than straight to Microsoft.
+LOGIN_URL = os.environ.get("LOGIN_URL", "auth")
 LOGIN_REDIRECT_URL = "/"  # Or any other endpoint
 
 AUTHENTICATION_BACKENDS = [
@@ -633,6 +635,7 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "oauth2_provider.backends.OAuth2Backend",
     "arches.app.permissions.arches_permission_base.PermissionBackend",
+    "catalina.permissions.plugin_backend.PluginPermissionBackend",
     "arches.app.utils.external_oauth_backend.ExternalOauthAuthenticationBackend",
     "azure_auth.backends.AzureBackend",
 ]

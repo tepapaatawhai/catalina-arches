@@ -24,7 +24,7 @@ CMD ?=
 
 create: docker
 	echo $(shell id -u)
-	FORUSER=$(shell id -u) $(DOCKER_COMPOSE_COMMAND) run -e FORUSER=$(shell id -u) --entrypoint /bin/sh arches_base -c ". ../ENV/bin/activate; apt install -y git; pip install 'pyjwt<2.1,>=2.0.0' 'cryptography<3.4.0' --only-binary cryptography --only-binary cffi; cd /local_root; ls -ltr; id -u; arches-admin startproject $(ARCHES_PROJECT) && mv docker Makefile $(ARCHES_PROJECT); ls -ltr; echo \$${FORUSER}; groupadd -g \$${FORUSER} externaluser; useradd -u \$${FORUSER} -g \$${FORUSER} externaluser; chown -R \$${FORUSER}:\$${FORUSER} $(ARCHES_PROJECT); echo \$$?; ls -ltr $(ARCHES_PROJECT)"
+	FORUSER=$(shell id -u) $(DOCKER_COMPOSE_COMMAND) run --remove-orphans -e FORUSER=$(shell id -u) --entrypoint /bin/sh arches_base -c ". ../ENV/bin/activate; apt install -y git; pip install 'pyjwt<2.1,>=2.0.0' 'cryptography<3.4.0' --only-binary cryptography --only-binary cffi; cd /local_root; ls -ltr; id -u; arches-admin startproject $(ARCHES_PROJECT) && mv docker Makefile $(ARCHES_PROJECT); ls -ltr; echo \$${FORUSER}; groupadd -g \$${FORUSER} externaluser; useradd -u \$${FORUSER} -g \$${FORUSER} externaluser; chown -R \$${FORUSER}:\$${FORUSER} $(ARCHES_PROJECT); echo \$$?; ls -ltr $(ARCHES_PROJECT)"
 
 cypress.config.js: dl-docker
 	cp docker/tests/cypress.config.js $(ARCHES_PROJECT_ROOT)
@@ -99,20 +99,20 @@ rebuild-images: docker
 	$(DOCKER_COMPOSE_COMMAND) build
 
 npm-install: docker
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker install_npm_components
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker install_npm_components
 
 npm-update: docker
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker update_npm_components
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker update_npm_components
 
 build: docker
 	# We need to have certain node modules, so if the additional ones are missing, clean the folder to ensure boostrap does so.
 	if [ -z node_modules/jquery-validation ]; then rm -rf node_modules; fi
 	$(DOCKER_COMPOSE_COMMAND) stop
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker install_npm_components
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker bootstrap
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker install_npm_components
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker bootstrap
 
 	if [ -d $(ARCHES_PROJECT)/pkg ]; then $(TOOLKIT_FOLDER)/act.py . load_package --yes; fi
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
 	$(DOCKER_COMPOSE_COMMAND) stop
 	$(MAKE) create-apps-dir
 	$(MAKE) update-urls-debug
@@ -125,30 +125,30 @@ create-github-action: cypress docker
 	@echo "You will now need to git-add your .github folder and commit it. On your next push, you should find Arches builds."
 
 down: docker
-	$(DOCKER_COMPOSE_COMMAND) down
+	$(DOCKER_COMPOSE_COMMAND) down --remove-orphans
 
 run: docker
-	$(DOCKER_COMPOSE_COMMAND) up
+	$(DOCKER_COMPOSE_COMMAND) up --remove-orphans
 
 web: docker
 	$(DOCKER_COMPOSE_COMMAND) stop arches
-	$(DOCKER_COMPOSE_COMMAND) run --service-ports arches
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --service-ports arches
 
 npm-development: docker
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
 
 docker-compose: docker
 	$(DOCKER_COMPOSE_COMMAND) $(shell echo $(CMD))
 
 manage: docker
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /bin/bash arches_worker -c '. ../ENV/bin/activate; python manage.py $(CMD)'
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /bin/bash arches_worker -c '. ../ENV/bin/activate; python manage.py $(CMD)'
 
 webpack: docker
-	$(DOCKER_COMPOSE_COMMAND) run --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
+	$(DOCKER_COMPOSE_COMMAND) run --remove-orphans --entrypoint /web_root/entrypoint.sh arches_worker run_npm_build_development
 
 clean: docker
 	@echo -n "This will remove all database and elasticsearch data, are you sure? [y/N] " && read confirmation && [ $${confirmation:-N} = y ]
-	$(DOCKER_COMPOSE_COMMAND) down -v --rmi all
+	$(DOCKER_COMPOSE_COMMAND) down --remove-orphans -v --rmi all
 
 help:
 	@echo
