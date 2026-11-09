@@ -157,10 +157,16 @@ class FakeCursor:
         return self.row
 
 
+def _connection(cursor):
+    """A stand-in for django.db.connection. Patching the module's name, not the
+    real connection's cursor, keeps SimpleTestCase's own DB guard intact."""
+    return mock.Mock(cursor=mock.Mock(return_value=cursor))
+
+
 class RefreshAllGeometriesTests(SimpleTestCase):
     def test_calls_the_refresh_function_and_returns_its_result(self):
         cursor = FakeCursor(row=("done",))
-        with mock.patch.object(post_publish.connection, "cursor", return_value=cursor):
+        with mock.patch.object(post_publish, "connection", _connection(cursor)):
             self.assertEqual(post_publish.refresh_all_geometries(), "done")
         self.assertEqual(
             cursor.executed, [("SELECT refresh_geojson_geometries()", None)]
@@ -170,7 +176,7 @@ class RefreshAllGeometriesTests(SimpleTestCase):
 class RebuildSpatialViewsTests(SimpleTestCase):
     def _run(self, cursor, opener=None):
         with (
-            mock.patch.object(post_publish.connection, "cursor", return_value=cursor),
+            mock.patch.object(post_publish, "connection", _connection(cursor)),
             mock.patch.object(post_publish.transaction, "atomic") as atomic,
             mock.patch("builtins.open", opener or open),
         ):
