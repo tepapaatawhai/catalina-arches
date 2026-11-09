@@ -11,9 +11,11 @@ run_post_publish() puts that right for one graph. The steps run in this order
 because each reads what the one before it writes:
 
 1. migrate stale instances (rewrites tiles; only when AUTO_MIGRATE_STALE_INSTANCES)
-2. rebuild geojson_geometries from the tiles
-3. add the missing resource_x_resource rows from the tiles
-4. clear the cached map tiles, which were built while the rows were missing
+2. rebuild geojson_geometries for the graph from the tiles
+3. refresh geojson_geometries for every graph (refresh_geojson_geometries())
+4. add the missing resource_x_resource rows from the tiles
+5. recreate the spatial views (pkg/post_sql), which publishing can drop
+6. clear the cached map tiles, which were built while the rows were missing
 
 Every step is idempotent and one failing does not stop the others.
 
@@ -24,6 +26,7 @@ at that point, so queue_after_data_update() queues it again when that job ends.
 """
 
 import logging
+import os
 from io import StringIO
 
 from django.conf import settings
@@ -39,6 +42,9 @@ DATA_UPDATE_TASK = "arches.app.tasks.update_resource_instance_data_based_on_grap
 # Gives the data update job that Arches queues beside the publish time to be seen
 # by the worker, so that migrate_stale_instances can tell it is running.
 MIGRATE_DELAY_SECONDS = 60
+# Run in this order: custom_spatial_views.sql reads the views that
+# add_spatial_views.sql registers.
+SPATIAL_VIEW_SQL_FILES = ("add_spatial_views.sql", "custom_spatial_views.sql")
 
 
 def rebuild_geometries(graph_id):
@@ -64,6 +70,32 @@ def rebuild_geometries(graph_id):
             [graph_id, GEOJSON_DATATYPE],
         )
         return cursor.fetchone()[0]
+
+
+def refresh_all_geometries():
+    """Run refresh_geojson_geometries(), which rebuilds the table for every graph.
+
+    It TRUNCATEs geojson_geometries, so it takes an exclusive lock that waits
+    behind open transactions while map tile requests queue behind it.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT refresh_geojson_geometries()")
+        return cursor.fetchone()[0]
+
+
+def rebuild_spatial_views():
+    """Re-run the spatial view SQL from the package, as `psql -1` would.
+
+    One transaction, with deferred constraints forced immediate first, so a
+    failure in either file leaves the existing views untouched.
+    """
+    directory = os.path.join(os.path.dirname(__file__), "pkg", "post_sql")
+    with transaction.atomic(), connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        for name in SPATIAL_VIEW_SQL_FILES:
+            with open(os.path.join(directory, name), encoding="utf-8") as f:
+                cursor.execute(f.read())
+    return list(SPATIAL_VIEW_SQL_FILES)
 
 
 # One row per relationship held in a tile of this graph that has no row yet. This
@@ -227,7 +259,9 @@ def run_post_publish(graph_id, user_id=None, migrate=None):
         )
     steps += [
         ("rebuild_geometries", lambda: rebuild_geometries(graph_id)),
+        ("refresh_all_geometries", refresh_all_geometries),
         ("rebuild_relationships", lambda: rebuild_relationships(graph_id)),
+        ("rebuild_spatial_views", rebuild_spatial_views),
         ("clear_tile_cache", clear_tile_cache),
     ]
 

@@ -49,7 +49,9 @@ class RunPostPublishTests(SimpleTestCase):
         names = (
             "migrate_stale_instances",
             "rebuild_geometries",
+            "refresh_all_geometries",
             "rebuild_relationships",
+            "rebuild_spatial_views",
             "clear_tile_cache",
         )
         patches = {n: mock.Mock(return_value=n) for n in names}
@@ -75,7 +77,9 @@ class RunPostPublishTests(SimpleTestCase):
             [
                 "migrate_stale_instances",
                 "rebuild_geometries",
+                "refresh_all_geometries",
                 "rebuild_relationships",
+                "rebuild_spatial_views",
                 "clear_tile_cache",
             ],
         )
@@ -100,7 +104,15 @@ class RunPostPublishTests(SimpleTestCase):
         patches = self._patched(rebuild_geometries=failing)
         results, calls = self._run(patches, migrate=False)
         self.assertIsInstance(results["rebuild_geometries"], RuntimeError)
-        self.assertEqual(calls, ["rebuild_relationships", "clear_tile_cache"])
+        self.assertEqual(
+            calls,
+            [
+                "refresh_all_geometries",
+                "rebuild_relationships",
+                "rebuild_spatial_views",
+                "clear_tile_cache",
+            ],
+        )
 
 
 class MigrateStaleInstancesStepTests(SimpleTestCase):
