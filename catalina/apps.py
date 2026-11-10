@@ -19,6 +19,7 @@ class CatalinaConfig(AppConfig):
             graph_validation_patch,
             has_group_patch,
             permitted_graphids_patch,
+            relationship_label_patch,
         )
 
         # Inactive graphs should not appear in the "Add new resource" menu.
@@ -34,6 +35,10 @@ class CatalinaConfig(AppConfig):
         # The manager menu checked group names directly, hiding Graph Designer
         # and the Reference Data Manager from role-permission groups.
         has_group_patch.apply()
+
+        # Controlled-list relationship ids made the tile save fail on index;
+        # see the module docstring.
+        relationship_label_patch.apply()
 
         # Publishing a graph wipes its geometry and relationship rows; see the
         # module docstring.
