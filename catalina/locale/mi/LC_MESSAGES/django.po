@@ -3097,7 +3097,7 @@ msgid "Arches %(version)s"
 msgstr "Arches %(Ngā momo putanga)s"
 
 #: app/templates/index.htm:184
-msgid "A web and mobile platform for"
+msgid "A platform for"
 msgstr "He pūhara tukutuku, pūrere kawe hoki hei"
 
 #: app/templates/index.htm:185
