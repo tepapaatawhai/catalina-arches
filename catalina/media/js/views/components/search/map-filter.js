@@ -42,7 +42,9 @@ import mbdraw from 'mapbox-gl-draw';
 // [west, south, east, north]. Express the eastern edge as > 180 for dateline-
 // crossing regions (NZ + Chatham Is.: 170°W == 190). Set ENFORCE_MAX_EXTENT = false
 // to only correct the antimeridian wrap without clamping.
-const ENFORCE_MAX_EXTENT = true;
+// Off by default: clamping hides out-of-region results (usually bad data), and
+// letting the map zoom out to them makes the problem visible to users.
+const ENFORCE_MAX_EXTENT = false;
 const MAX_EXTENT = [160, -55, 195, -25];  // tune to your instance's region
 
 // Wrap a longitude into [anchor, anchor + 360).
@@ -97,9 +99,12 @@ function catalinaNormalizeResultsBounds(bounds) {
         var cSouth = Math.max(south, mSouth);
         var cNorth = Math.min(north, mNorth);
 
-        // If clamping collapses/inverts the box (results fall outside the max
-        // extent), fall back to the max extent itself rather than a broken box.
-        if (cEast <= cWest || cNorth <= cSouth) {
+        // If clamping inverts the box (results fall outside the max extent), fall
+        // back to the max extent itself rather than a broken box. Use strict `<`:
+        // a zero-size box (a single point: 1 result, or the drawn marker when there
+        // are 0 results) is valid and must pass through so mapbox zooms to it, as
+        // upstream Arches does.
+        if (cEast < cWest || cNorth < cSouth) {
             cWest = mWest; cEast = mEast; cSouth = mSouth; cNorth = mNorth;
         }
         west = cWest; east = cEast; south = cSouth; north = cNorth;
