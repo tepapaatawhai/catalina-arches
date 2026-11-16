@@ -340,6 +340,17 @@ module.exports = () => {
                 // via a require.context) to the project override, which hides
                 // inactive graphs from the "Create a new ..." rows. The core widgets
                 // otherwise ended up bundled against the core copy.
+                // Catalina: same for the controlled-lists reference-select viewmodel,
+                // which falls back to the default language for list item labels.
+                new webpack.NormalModuleReplacementPlugin(
+                    /(^|[\\/])viewmodels[\\/]reference-select(\.js)?$/,
+                    (resource) => {
+                        const override = Path.resolve(__dirname, APP_ROOT, 'media', 'js', 'viewmodels', 'reference-select.js');
+                        if (fs.existsSync(override)) {
+                            resource.request = override;
+                        }
+                    }
+                ),
                 new webpack.NormalModuleReplacementPlugin(
                     /(^|[\\/])viewmodels[\\/]resource-instance-select(\.js)?$/,
                     (resource) => {

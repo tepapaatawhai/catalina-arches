@@ -26,6 +26,15 @@ const initialize = function (element, valueAccessor, allBindings) {
         languageList.push(`${lang.code}:${lang.name}`);
     }
 
+    // Catalina: remember which UI languages CKEditor really ships a file for,
+    // before the loop below marks every Arches language as available. Languages
+    // without a file (e.g. mi) would 404 and crash on lang.dir, so the editor
+    // UI falls back to en for those.
+    if (!CKEDITOR.catalinaNativeLanguages) {
+        CKEDITOR.catalinaNativeLanguages = new Set(Object.keys(CKEDITOR.lang.languages));
+    }
+    const uiLanguage = (code) => CKEDITOR.catalinaNativeLanguages.has(code) ? code : 'en';
+
     for (const lang of arches.languages) {
         if (!CKEDITOR.lang.languages[lang.code]) {
             CKEDITOR.lang.languages[lang.code] = 1;
@@ -34,7 +43,7 @@ const initialize = function (element, valueAccessor, allBindings) {
 
     /* eslint-disable no-undef */
     CKEDITOR.config.language_list = languageList;
-    CKEDITOR.config.language = language();
+    CKEDITOR.config.language = uiLanguage(language());
     CKEDITOR.config.contentsLangDirection = direction();
     CKEDITOR.config.autoParagraph = false;
     CKEDITOR.config.toolbar = [
@@ -60,7 +69,7 @@ const initialize = function (element, valueAccessor, allBindings) {
     });
 
     language.subscribe(newValue => {
-        CKEDITOR.config.language = newValue;
+        CKEDITOR.config.language = uiLanguage(newValue);
     });
 
     if (allBindings.has('ckeditorOptions')) {

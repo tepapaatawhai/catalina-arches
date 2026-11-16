@@ -17,6 +17,11 @@ import 'bindings/chosen';
 * @param {function} params.config - observable containing config object
 */
 
+// Catalina: data is not translatable, so these widgets always start on (and
+// save to) the default language, whatever language the UI is in. The language
+// selector still works for anyone who opens it.
+const DATA_LANGUAGE = 'en';
+
 const viewModel = function(params) {
     params.configKeys = ['placeholder', 'displayfullvalue'];
     const self = this;
@@ -25,8 +30,8 @@ const viewModel = function(params) {
     WidgetViewModel.apply(self, [params]);
     const initialCurrent = {};
     self.showi18nOptions = ko.observable(false);
-    initialCurrent[arches.activeLanguage] = {value: '', direction: 'ltr'};
-    const currentLanguage = {"code": arches.activeLanguage};
+    initialCurrent[DATA_LANGUAGE] = {value: '', direction: 'ltr'};
+    const currentLanguage = {"code": DATA_LANGUAGE};
     let currentValue = koMapping.toJS(self.value) || initialCurrent;
     self.currentLanguage = ko.observable(currentLanguage);
     self.currentPlaceholder = ko.observable();
@@ -44,7 +49,7 @@ const viewModel = function(params) {
 
     const languages = arches.languages;
     self.languages =  ko.observableArray(languages);
-    self.currentLanguage(languages.find(element => element.code == arches.activeLanguage));
+    self.currentLanguage(languages.find(element => element.code == DATA_LANGUAGE));
 
     if(!currentValue?.[currentLanguage.code]){
         self.currentText = ko.observable('');
@@ -64,6 +69,22 @@ const viewModel = function(params) {
         self.currentPlaceholder(self.placeholder()[self.currentLanguage().code]);
     }
 
+    // Catalina: when the active language has no text, expose the fallback
+    // language's text so the report can show it and the editor can use it as a
+    // placeholder (never as the saved value).
+    const FALLBACK_LANGUAGE = 'en';
+    self.fallbackLanguage = FALLBACK_LANGUAGE;
+    self.fallbackText = ko.pureComputed(() => {
+        const code = self.currentLanguage()?.code;
+        if (!code || code === FALLBACK_LANGUAGE || self.currentText()) { return ''; }
+        return koMapping.toJS(self.value)?.[FALLBACK_LANGUAGE]?.value || '';
+    });
+    self.fallbackPlaceholder = ko.pureComputed(() => {
+        const div = document.createElement('div');
+        div.innerHTML = self.fallbackText();
+        return (div.textContent || '').trim();
+    });
+
     self.defaultText = ko.observable();
     self.defaultText.subscribe(newValue => {
         const config = self.config();
@@ -74,7 +95,7 @@ const viewModel = function(params) {
     // Catalina patch: when the active language (e.g. mi) has no entry in a
     // per-language value object, the fallback is a plain object, not an
     // observable. Only subscribe to real observables.
-    const valueLeaf = self.value?.[arches.activeLanguage]?.value || self.value;
+    const valueLeaf = self.value?.[DATA_LANGUAGE]?.value || self.value;
     ko.isObservable(valueLeaf) && valueLeaf.subscribe(newValue => {
         const currentLanguage = self.currentLanguage();
         if(!currentLanguage) { return; }
