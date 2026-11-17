@@ -16,6 +16,7 @@ class CatalinaConfig(AppConfig):
         from catalina.oauth_application import sync_gis_oauth_application
         from catalina.utils import (
             createable_resources_patch,
+            descriptor_language_fallback_patch,
             graph_validation_patch,
             has_group_patch,
             permitted_graphids_patch,
@@ -24,6 +25,10 @@ class CatalinaConfig(AppConfig):
 
         # Inactive graphs should not appear in the "Add new resource" menu.
         createable_resources_patch.apply()
+
+        # Resource names show "Undefined" in any language but the default; see
+        # the module docstring.
+        descriptor_language_fallback_patch.apply()
 
         # Saving a large graph in the Graph Designer re-serialized every widget
         # once per node; see the module docstring.
