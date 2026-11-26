@@ -631,6 +631,13 @@ AZURE_AUTH = {
 LOGIN_URL = os.environ.get("LOGIN_URL", "auth")
 LOGIN_REDIRECT_URL = "/"  # Or any other endpoint
 
+# Lock an account after repeated failed logins (pentest finding WA01).
+ACCOUNT_LOCKOUT_ENABLED = (
+    os.environ.get("ACCOUNT_LOCKOUT_ENABLED", "true").lower() != "false"
+)
+ACCOUNT_LOCKOUT_ATTEMPTS = int(os.environ.get("ACCOUNT_LOCKOUT_ATTEMPTS", 3))
+ACCOUNT_LOCKOUT_SECONDS = int(os.environ.get("ACCOUNT_LOCKOUT_SECONDS", 900))
+
 AUTHENTICATION_BACKENDS = [
     # Must stay first so a locked account is rejected before any password check.
     "catalina.utils.account_lockout.LockoutBackend",
