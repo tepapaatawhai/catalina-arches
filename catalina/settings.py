@@ -632,6 +632,8 @@ LOGIN_URL = os.environ.get("LOGIN_URL", "auth")
 LOGIN_REDIRECT_URL = "/"  # Or any other endpoint
 
 AUTHENTICATION_BACKENDS = [
+    # Must stay first so a locked account is rejected before any password check.
+    "catalina.utils.account_lockout.LockoutBackend",
     # Do we need this? "arches.app.utils.email_auth_backend.EmailAuthenticationBackend",
     "django.contrib.auth.backends.ModelBackend",
     "oauth2_provider.backends.OAuth2Backend",

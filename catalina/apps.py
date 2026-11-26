@@ -45,6 +45,11 @@ class CatalinaConfig(AppConfig):
         # see the module docstring.
         relationship_label_patch.apply()
 
+        # Lock accounts after repeated failed logins; see the module docstring.
+        from catalina.utils import account_lockout
+
+        account_lockout.connect()
+
         # Publishing a graph wipes its geometry and relationship rows; see the
         # module docstring.
         from arches.app.models.models import GraphXPublishedGraph
