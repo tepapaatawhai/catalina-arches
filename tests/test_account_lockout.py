@@ -1,5 +1,7 @@
 """Tests for catalina/utils/account_lockout.py."""
 
+from types import SimpleNamespace
+
 from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
@@ -18,8 +20,6 @@ class AcceptSecretBackend:
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         if password == "secret":
-            from types import SimpleNamespace
-
             return SimpleNamespace(
                 pk=1,
                 is_active=True,
@@ -75,18 +75,12 @@ class AccountLockoutTests(SimpleTestCase):
         self.assertIsNone(cache.get(account_lockout._key("count", "alice")))
 
     def test_success_resets_the_failure_count(self):
-        from django.contrib.auth.signals import user_logged_in
+        # Call our receiver directly: sending the real signal also runs other
+        # apps' receivers (Arches' needs user.backend, Django's needs save()).
+        user = SimpleNamespace(get_username=lambda: "alice")
 
         self._fail(times=2)
-        user_logged_in.send(
-            sender=None,
-            request=None,
-            user=type(
-                "U",
-                (),
-                {"get_username": lambda self: "alice", "save": lambda self, **kw: None},
-            )(),
-        )
+        account_lockout._on_logged_in(sender=None, user=user)
         self._fail(times=2)
         self.assertFalse(account_lockout.is_locked("alice"))
 
