@@ -275,6 +275,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "catalina.utils.safe_next_middleware.SafeNextMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "arches.app.utils.middleware.ModifyAuthorizationHeader",
     "oauth2_provider.middleware.OAuth2TokenMiddleware",
@@ -631,7 +632,16 @@ AZURE_AUTH = {
 LOGIN_URL = os.environ.get("LOGIN_URL", "auth")
 LOGIN_REDIRECT_URL = "/"  # Or any other endpoint
 
+# Lock an account after repeated failed logins (pentest finding WA01).
+ACCOUNT_LOCKOUT_ENABLED = (
+    os.environ.get("ACCOUNT_LOCKOUT_ENABLED", "true").lower() != "false"
+)
+ACCOUNT_LOCKOUT_ATTEMPTS = int(os.environ.get("ACCOUNT_LOCKOUT_ATTEMPTS", 3))
+ACCOUNT_LOCKOUT_SECONDS = int(os.environ.get("ACCOUNT_LOCKOUT_SECONDS", 900))
+
 AUTHENTICATION_BACKENDS = [
+    # Must stay first so a locked account is rejected before any password check.
+    "catalina.utils.account_lockout.LockoutBackend",
     # Do we need this? "arches.app.utils.email_auth_backend.EmailAuthenticationBackend",
     "django.contrib.auth.backends.ModelBackend",
     "oauth2_provider.backends.OAuth2Backend",
