@@ -21,6 +21,7 @@ class CatalinaConfig(AppConfig):
             has_group_patch,
             permitted_graphids_patch,
             relationship_label_patch,
+            string_sanitize_patch,
         )
 
         # Inactive graphs should not appear in the "Add new resource" menu.
@@ -44,6 +45,9 @@ class CatalinaConfig(AppConfig):
         # Controlled-list relationship ids made the tile save fail on index;
         # see the module docstring.
         relationship_label_patch.apply()
+
+        # Stored XSS via string nodes; see the module docstring.
+        string_sanitize_patch.apply()
 
         # Lock accounts after repeated failed logins; see the module docstring.
         from catalina.utils import account_lockout
