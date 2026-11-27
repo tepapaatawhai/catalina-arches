@@ -122,7 +122,9 @@ if AWS_STORAGE_BUCKET_NAME:
     }
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-uakb+p1m4%)vx2)6!r&q0*ff@j90ih^35(j0xb#0j-)o_f)y)b"
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-uakb+p1m4%)vx2)6!r&q0*ff@j90ih^35(j0xb#0j-)o_f)y)b"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(os.environ.get("DJANGO_DEBUG", False))
@@ -422,7 +424,7 @@ CACHES = {
 }
 
 # Hide nodes and cards in a report that have no data
-HIDE_EMPTY_NODES_IN_REPORT = False
+HIDE_EMPTY_NODES_IN_REPORT = True
 
 BYPASS_UNIQUE_CONSTRAINT_TILE_VALIDATION = False
 BYPASS_REQUIRED_VALUE_TILE_VALIDATION = False
